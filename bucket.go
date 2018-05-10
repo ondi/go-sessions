@@ -8,13 +8,9 @@ import "sync"
 
 import "github.com/ondi/go-cache"
 
-type ID64_t interface {
-	Sum64() uint64
-}
-
 type Key_t struct {
-	Domain ID64_t
-	UID ID64_t
+	Domain interface{}
+	UID interface{}
 }
 
 type Mapped_t struct {
@@ -39,14 +35,14 @@ type Stat_t struct {
 }
 
 type StatList_t struct {
-	Domain ID64_t
+	Domain interface{}
 	Stat Stat_t
 }
 
 type Bucket_t struct {
 	mx sync.Mutex
 	cc * cache.Cache
-	stats map[ID64_t]*Stat_t
+	stats map[interface{}]*Stat_t
 	ttl int64
 	count int
 }
@@ -71,7 +67,7 @@ func (Drop_t) Evict(Value_t) bool {
 func NewBucket(ttl int64, count int) (self * Bucket_t) {
 	self = &Bucket_t{}
 	self.cc = cache.New()
-	self.stats = make(map[ID64_t]*Stat_t)
+	self.stats = make(map[interface{}]*Stat_t)
 	self.ttl = ttl
 	self.count = count
 	return
@@ -106,7 +102,7 @@ func (self * Bucket_t) Clear() {
 	self.mx.Lock()
 	defer self.mx.Unlock()
 	self.cc = cache.New()
-	self.stats = make(map[ID64_t]*Stat_t)
+	self.stats = make(map[interface{}]*Stat_t)
 }
 
 func (self * Bucket_t) Flush(LastTs int64, keep int, evicted Evict) {
@@ -115,7 +111,7 @@ func (self * Bucket_t) Flush(LastTs int64, keep int, evicted Evict) {
 	for self.__evict_last(LastTs, keep, evicted) {}
 }
 
-func (self * Bucket_t) Remove(Domain ID64_t, UID ID64_t, evicted Evict) bool {
+func (self * Bucket_t) Remove(Domain interface{}, UID interface{}, evicted Evict) bool {
 	self.mx.Lock()
 	defer self.mx.Unlock()
 	if it := self.cc.Find(Key_t{Domain: Domain, UID: UID}); it != self.cc.End() {
@@ -147,7 +143,7 @@ func (self * Bucket_t) ListBack(evicted Evict) bool {
 	return true
 }
 
-func (self * Bucket_t) Update(Ts int64, Domain ID64_t, UID ID64_t, Data interface{}, evicted Evict) (LastTs int64, Diff int64, Mapped Mapped_t) {
+func (self * Bucket_t) Update(Ts int64, Domain interface{}, UID interface{}, Data interface{}, evicted Evict) (LastTs int64, Diff int64, Mapped Mapped_t) {
 	self.mx.Lock()
 	defer self.mx.Unlock()
 	for self.__evict_last(Ts, self.count, evicted) {}
@@ -193,7 +189,7 @@ func (self * Bucket_t) Update(Ts int64, Domain ID64_t, UID ID64_t, Data interfac
 	return
 }
 
-func (self * Bucket_t) Stat(Domain ID64_t) Stat_t {
+func (self * Bucket_t) Stat(Domain interface{}) Stat_t {
 	self.mx.Lock()
 	defer self.mx.Unlock()
 	if res, ok := self.stats[Domain]; ok {

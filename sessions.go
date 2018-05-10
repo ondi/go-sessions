@@ -4,6 +4,10 @@
 
 package sessions
 
+type ID64_t interface {
+	Sum64() uint64
+}
+
 type Session_t struct {
 	shards uint64
 	bucket []*Bucket_t
@@ -40,7 +44,7 @@ func (self * Session_t) Flush(LastTs int64, keep int, evicted Evict) {
 	}
 }
 
-func (self * Session_t) Remove(Domain ID64_t, UID ID64_t, evicted Evict) bool {
+func (self * Session_t) Remove(Domain ID64_t, UID interface{}, evicted Evict) bool {
 	i := self.get_bucket(Domain)
 	return self.bucket[i].Remove(Domain, UID, evicted)
 }
@@ -61,7 +65,7 @@ func (self * Session_t) ListBack(evicted Evict) {
 	}
 }
 
-func (self * Session_t) Update(Ts int64, Domain ID64_t, UID ID64_t, Data interface{}, evicted Evict) (LastTs int64, Diff int64, Mapped Mapped_t) {
+func (self * Session_t) Update(Ts int64, Domain ID64_t, UID interface{}, Data interface{}, evicted Evict) (LastTs int64, Diff int64, Mapped Mapped_t) {
 	i := self.get_bucket(Domain)
 	return self.bucket[i].Update(Ts, Domain, UID, Data, evicted)
 }
