@@ -38,6 +38,11 @@ type Stat_t struct {
 	Duration int64
 }
 
+type StatList_t struct {
+	Domain ID64_t
+	Stat Stat_t
+}
+
 type Bucket_t struct {
 	mx sync.Mutex
 	cc * cache.Cache
@@ -197,12 +202,13 @@ func (self * Bucket_t) Stat(Domain ID64_t) Stat_t {
 	return Stat_t{}
 }
 
-func (self * Bucket_t) StatAll(res map[ID64_t]Stat_t) {
+func (self * Bucket_t) StatList() (res []StatList_t) {
 	self.mx.Lock()
 	defer self.mx.Unlock()
 	for k, v := range self.stats {
-		res[k] = *v
+		res = append(res, StatList_t{k, *v})
 	}
+	return
 }
 
 func (self * Bucket_t) Size() (int, int) {
