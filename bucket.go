@@ -34,9 +34,19 @@ type Stat_t struct {
 	Duration int64
 }
 
-type StatList_t struct {
+type StatRow_t struct {
 	Domain interface{}
 	Stat Stat_t
+}
+
+type StatList_t []StatRow_t
+
+func (self StatList_t) Len() int {
+	return len(self)
+}
+
+func (self StatList_t) Swap(i int, j int) {
+	self[i], self[j] = self[j], self[i]
 }
 
 type Bucket_t struct {
@@ -198,11 +208,11 @@ func (self * Bucket_t) Stat(Domain interface{}) Stat_t {
 	return Stat_t{}
 }
 
-func (self * Bucket_t) StatList() (res []StatList_t) {
+func (self * Bucket_t) StatList() (res StatList_t) {
 	self.mx.Lock()
 	defer self.mx.Unlock()
 	for k, v := range self.stats {
-		res = append(res, StatList_t{k, *v})
+		res = append(res, StatRow_t{k, *v})
 	}
 	return
 }

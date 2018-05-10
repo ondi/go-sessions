@@ -75,7 +75,7 @@ func (self * Session_t) Stat(Domain ID64_t) (stat Stat_t) {
 	return self.bucket[i].Stat(Domain)
 }
 
-func (self * Session_t) StatList() (res []StatList_t) {
+func (self * Session_t) StatList() (res StatList_t) {
 	for _, b := range self.bucket {
 		res = append(res, b.StatList()...)
 	}
