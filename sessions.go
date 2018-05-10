@@ -29,14 +29,14 @@ func (self * Session_t) get_bucket(Domain ID64_t) uint64 {
 }
 
 func (self * Session_t) Clear() {
-	for i := uint64(0); i < self.shards; i++ {
-		self.bucket[i].Clear()
+	for _, b := range self.bucket {
+		b.Clear()
 	}
 }
 
 func (self * Session_t) Flush(LastTs int64, keep int, evicted Evict) {
-	for i := uint64(0); i < self.shards; i++ {
-		self.bucket[i].Flush(LastTs, keep, evicted)
+	for _, b := range self.bucket {
+		b.Flush(LastTs, keep, evicted)
 	}
 }
 
@@ -46,16 +46,16 @@ func (self * Session_t) Remove(Domain ID64_t, UID ID64_t, evicted Evict) bool {
 }
 
 func (self * Session_t) ListFront(evicted Evict) {
-	for i := uint64(0); i < self.shards; i++ {
-		if self.bucket[i].ListFront(evicted) == false {
+	for _, b := range self.bucket {
+		if b.ListFront(evicted) == false {
 			return
 		}
 	}
 }
 
 func (self * Session_t) ListBack(evicted Evict) {
-	for i := uint64(0); i < self.shards; i++ {
-		if self.bucket[i].ListBack(evicted) == false {
+	for _, b := range self.bucket {
+		if b.ListBack(evicted) == false {
 			return
 		}
 	}
@@ -73,26 +73,26 @@ func (self * Session_t) Stat(Domain ID64_t) (stat Stat_t) {
 
 func (self * Session_t) StatAll() (res map[ID64_t]Stat_t) {
 	res = map[ID64_t]Stat_t{}
-	for i := uint64(0); i < self.shards; i++ {
-		self.bucket[i].StatAll(res)
+	for _, b := range self.bucket {
+		b.StatAll(res)
 	}
 	return
 }
 
 func (self * Session_t) SizeBuckets() (res [][3]int) {
-	for i := uint64(0); i < self.shards; i++ {
-		a, b := self.bucket[i].Size()
-		res = append(res, [3]int{1, a, b})
+	for _, b := range self.bucket {
+		x, y := b.Size()
+		res = append(res, [3]int{1, x, y})
 	}
 	return
 }
 
 func (self * Session_t) Size() (res [][3]int) {
 	var temp [3]int
-	for i := uint64(0); i < self.shards; i++ {
-		a, b := self.bucket[i].Size()
-		temp[1] += a
-		temp[2] += b
+	for _, b := range self.bucket {
+		x, y := b.Size()
+		temp[1] += x
+		temp[2] += y
 	}
 	temp[0] = int(self.shards)
 	return [][3]int{temp}

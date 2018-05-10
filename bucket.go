@@ -208,5 +208,5 @@ func (self * Bucket_t) StatAll(res map[ID64_t]Stat_t) {
 func (self * Bucket_t) Size() (int, int) {
 	self.mx.Lock()
 	defer self.mx.Unlock()
-	return self.cc.Size(), len(self.stats)
+	return len(self.stats), self.cc.Size()
 }
