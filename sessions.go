@@ -39,9 +39,9 @@ type Stat_t struct {
 	Duration int64
 }
 
-type bucket_t struct {
+type Bucket_t struct {
 	mx sync.Mutex
-	cx * cache.Cache
+	cc * cache.Cache
 	stats map[ID64_t]*Stat_t
 }
 
@@ -49,7 +49,7 @@ type Session_t struct {
 	shards uint64
 	ttl int64
 	count int
-	bucket []bucket_t
+	bucket []Bucket_t
 }
 
 type Evict interface {
@@ -69,42 +69,9 @@ func (Drop_t) Evict(Value_t) bool {
 	return true
 }
 
-func New(shards uint64, ttl int64, count int) (self * Session_t) {
-	self = &Session_t{}
-	if ttl <= 0 {
-		ttl = 1 << 63 - 1
-	}
-	if count <= 0 {
-		count = 1 << 63 - 1
-	}
-	self.ttl = ttl
-	self.count = count
-	self.shards = shards
-	self.bucket = make([]bucket_t, shards)
-	self.Clear()
-	return
-}
-
-func (self * Session_t) get_bucket(Domain ID64_t) uint64 {
-	return Domain.Sum64() % self.shards
-}
-
-func (self * Session_t) Clear() {
-	for i := uint64(0); i < self.shards; i++ {
-		self.clear(i)
-	}
-}
-
-func (self * Session_t) clear(i uint64) {
-	self.bucket[i].mx.Lock()
-	defer self.bucket[i].mx.Unlock()
-	self.bucket[i].cx = cache.New()
-	self.bucket[i].stats = make(map[ID64_t]*Stat_t)
-}
-
-func (self * Session_t) __remove(i uint64, it * cache.Value_t, evicted Evict) {
+func (self * Bucket_t) __remove(it * cache.Value_t, evicted Evict) {
 	value := Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Mapped().(Mapped_t)}
-	stat := self.bucket[i].stats[value.Domain]
+	stat := self.stats[value.Domain]
 	if stat.Sessions > 1 {
 		stat.Sessions--
 		if value.Hits == 1 {
@@ -113,78 +80,79 @@ func (self * Session_t) __remove(i uint64, it * cache.Value_t, evicted Evict) {
 		stat.Hits -= value.Hits
 		stat.Duration -= value.Duration
 	} else {
-		delete(self.bucket[i].stats, value.Domain)
+		delete(self.stats, value.Domain)
 	}
-	self.bucket[i].cx.Remove(value.Key_t)
+	self.cc.Remove(value.Key_t)
 	evicted.Evict(value)
 }
 
-func (self * Session_t) __evict_last(i uint64, LastTs int64, Keep int, evicted Evict) bool {
-	if it := self.bucket[i].cx.Back(); it != self.bucket[i].cx.End() && (LastTs - it.Mapped().(Mapped_t).LastTs > self.ttl || self.bucket[i].cx.Size() > Keep) {
-		self.__remove(i, it, evicted)
+func (self * Bucket_t) __evict_last(LastTs int64, keep int, ttl int64, evicted Evict) bool {
+	if it := self.cc.Back(); it != self.cc.End() && (LastTs - it.Mapped().(Mapped_t).LastTs > ttl || self.cc.Size() > keep) {
+		self.__remove(it, evicted)
 		return true
 	}
 	return false
 }
 
-func (self * Session_t) Flush(LastTs int64, Keep int, evicted Evict) {
-	for i := uint64(0); i < self.shards; i++ {
-		self.bucket[i].mx.Lock()
-		for self.__evict_last(i, LastTs, Keep, evicted) {}
-		self.bucket[i].mx.Unlock()
-	}
+func (self * Bucket_t) Clear() {
+	self.mx.Lock()
+	defer self.mx.Unlock()
+	self.cc = cache.New()
+	self.stats = make(map[ID64_t]*Stat_t)
 }
 
-func (self * Session_t) Remove(Domain ID64_t, UID ID64_t, evicted Evict) bool {
-	i := self.get_bucket(Domain)
-	self.bucket[i].mx.Lock()
-	defer self.bucket[i].mx.Unlock()
-	if it := self.bucket[i].cx.Find(Key_t{Domain: Domain, UID: UID}); it != self.bucket[i].cx.End() {
-		self.__remove(i, it, evicted)
+func (self * Bucket_t) Flush(LastTs int64, Keep int, TTL int64, evicted Evict) {
+	self.mx.Lock()
+	defer self.mx.Unlock()
+	for self.__evict_last(LastTs, Keep, TTL, evicted) {}
+}
+
+func (self * Bucket_t) Remove(Domain ID64_t, UID ID64_t, evicted Evict) bool {
+	self.mx.Lock()
+	defer self.mx.Unlock()
+	if it := self.cc.Find(Key_t{Domain: Domain, UID: UID}); it != self.cc.End() {
+		self.__remove(it, evicted)
 		return true
 	}
 	return false
 }
 
-func (self * Session_t) ListFront(evicted Evict) {
-	for i := uint64(0); i < self.shards; i++ {
-		self.bucket[i].mx.Lock()
-		for it := self.bucket[i].cx.Front(); it != self.bucket[i].cx.End(); it = it.Next() {
-			if evicted.Evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Mapped().(Mapped_t)}) == false {
-				break
-			}
+func (self * Bucket_t) ListFront(evicted Evict) bool {
+	self.mx.Lock()
+	defer self.mx.Unlock()
+	for it := self.cc.Front(); it != self.cc.End(); it = it.Next() {
+		if evicted.Evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Mapped().(Mapped_t)}) == false {
+			return false
 		}
-		self.bucket[i].mx.Unlock()
 	}
+	return true
 }
 
-func (self * Session_t) ListBack(evicted Evict) {
-	for i := uint64(0); i < self.shards; i++ {
-		self.bucket[i].mx.Lock()
-		for it := self.bucket[i].cx.Back(); it != self.bucket[i].cx.End(); it = it.Prev() {
-			if evicted.Evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Mapped().(Mapped_t)}) == false {
-				break
-			}
+func (self * Bucket_t) ListBack(evicted Evict) bool {
+	self.mx.Lock()
+	defer self.mx.Unlock()
+	for it := self.cc.Back(); it != self.cc.End(); it = it.Prev() {
+		if evicted.Evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Mapped().(Mapped_t)}) == false {
+			return false
 		}
-		self.bucket[i].mx.Unlock()
 	}
+	return true
 }
 
-func (self * Session_t) Update(Ts int64, Domain ID64_t, UID ID64_t, Data interface{}, evicted Evict) (LastTs int64, Diff int64, Mapped Mapped_t) {
-	i := self.get_bucket(Domain)
-	self.bucket[i].mx.Lock()
-	defer self.bucket[i].mx.Unlock()
-	for self.__evict_last(i, Ts, self.count, evicted) {}
+func (self * Bucket_t) Update(Ts int64, Domain ID64_t, UID ID64_t, Data interface{}, count int, ttl int64, evicted Evict) (LastTs int64, Diff int64, Mapped Mapped_t) {
+	self.mx.Lock()
+	defer self.mx.Unlock()
+	for self.__evict_last(Ts, count, ttl, evicted) {}
 	key := Key_t{Domain: Domain, UID: UID}
 	Mapped = Mapped_t{FirstData: Data, LastData: Data, Hits: 1, Duration: 0, FirstTs: Ts, LastTs: Ts}
-	it, ok := self.bucket[i].cx.PushFront(key, Mapped)
+	it, ok := self.cc.PushFront(key, Mapped)
 	if ok {
-		if stat, ok := self.bucket[i].stats[Domain]; ok {
+		if stat, ok := self.stats[Domain]; ok {
 			stat.Hits++
 			stat.Sessions++
 			stat.Bounces++
 		} else {
-			self.bucket[i].stats[Domain] = &Stat_t{Hits: 1, Sessions: 1, Bounces: 1, Duration: 0}
+			self.stats[Domain] = &Stat_t{Hits: 1, Sessions: 1, Bounces: 1, Duration: 0}
 		}
 		return
 	}
@@ -207,7 +175,7 @@ func (self * Session_t) Update(Ts int64, Domain ID64_t, UID ID64_t, Data interfa
 	}
 	Mapped.Hits++
 	Mapped.Duration += Diff
-	stat := self.bucket[i].stats[Domain]
+	stat := self.stats[Domain]
 	if Mapped.Hits == 2 {
 		stat.Bounces--
 	}
@@ -217,54 +185,117 @@ func (self * Session_t) Update(Ts int64, Domain ID64_t, UID ID64_t, Data interfa
 	return
 }
 
-func (self * Session_t) Stat(Domain ID64_t) (stat Stat_t) {
-	i := self.get_bucket(Domain)
-	self.bucket[i].mx.Lock()
-	defer self.bucket[i].mx.Unlock()
-	if res, ok := self.bucket[i].stats[Domain]; ok {
-		stat = *res
+func (self * Bucket_t) Stat(Domain ID64_t) Stat_t {
+	self.mx.Lock()
+	defer self.mx.Unlock()
+	if res, ok := self.stats[Domain]; ok {
+		return *res
 	}
+	return Stat_t{}
+}
+
+func (self * Bucket_t) StatAll(res map[ID64_t]Stat_t) {
+	self.mx.Lock()
+	defer self.mx.Unlock()
+	for k, v := range self.stats {
+		res[k] = *v
+	}
+}
+
+func (self * Bucket_t) Size() (int, int) {
+	self.mx.Lock()
+	defer self.mx.Unlock()
+	return self.cc.Size(), len(self.stats)
+}
+
+func New(shards uint64, ttl int64, count int) (self * Session_t) {
+	self = &Session_t{}
+	if ttl <= 0 {
+		ttl = 1 << 63 - 1
+	}
+	if count <= 0 {
+		count = 1 << 63 - 1
+	}
+	self.ttl = ttl
+	self.count = count
+	self.shards = shards
+	self.bucket = make([]Bucket_t, shards)
+	self.Clear()
 	return
 }
 
-func (self * Session_t) stat_all(i uint64, res map[ID64_t]Stat_t) () {
-	self.bucket[i].mx.Lock()
-	defer self.bucket[i].mx.Unlock()
-	for k, v := range self.bucket[i].stats {
-		res[k] = *v
+func (self * Session_t) get_bucket(Domain ID64_t) uint64 {
+	return Domain.Sum64() % self.shards
+}
+
+func (self * Session_t) Clear() {
+	for i := uint64(0); i < self.shards; i++ {
+		self.bucket[i].Clear()
 	}
+}
+
+func (self * Session_t) Flush(LastTs int64, Keep int, evicted Evict) {
+	for i := uint64(0); i < self.shards; i++ {
+		self.bucket[i].Flush(LastTs, Keep, self.ttl, evicted)
+	}
+}
+
+func (self * Session_t) Remove(Domain ID64_t, UID ID64_t, evicted Evict) bool {
+	i := self.get_bucket(Domain)
+	return self.bucket[i].Remove(Domain, UID, evicted)
+}
+
+func (self * Session_t) ListFront(evicted Evict) {
+	for i := uint64(0); i < self.shards; i++ {
+		if self.bucket[i].ListFront(evicted) == false {
+			return
+		}
+	}
+}
+
+func (self * Session_t) ListBack(evicted Evict) {
+	for i := uint64(0); i < self.shards; i++ {
+		if self.bucket[i].ListBack(evicted) == false {
+			return
+		}
+	}
+}
+
+func (self * Session_t) Update(Ts int64, Domain ID64_t, UID ID64_t, Data interface{}, evicted Evict) (LastTs int64, Diff int64, Mapped Mapped_t) {
+	i := self.get_bucket(Domain)
+	return self.bucket[i].Update(Ts, Domain, UID, Data, self.count, self.ttl, evicted)
+}
+
+func (self * Session_t) Stat(Domain ID64_t) (stat Stat_t) {
+	i := self.get_bucket(Domain)
+	return self.bucket[i].Stat(Domain)
 }
 
 func (self * Session_t) StatAll() (res map[ID64_t]Stat_t) {
 	res = map[ID64_t]Stat_t{}
 	for i := uint64(0); i < self.shards; i++ {
-		self.stat_all(i, res)
+		self.bucket[i].StatAll(res)
 	}
 	return
 }
 
-func (self * Session_t) size_bucket(i uint64, res * [3]int) {
-	self.bucket[i].mx.Lock()
-	defer self.bucket[i].mx.Unlock()
-	res[0] += 1
-	res[1] += self.bucket[i].cx.Size()
-	res[2] += len(self.bucket[i].stats)
-}
-
 func (self * Session_t) SizeBuckets() (res [][3]int) {
 	for i := uint64(0); i < self.shards; i++ {
-		res = append(res, [3]int{})
-		self.size_bucket(i, &res[i])
+		a, b := self.bucket[i].Size()
+		res = append(res, [3]int{1, a, b})
 	}
 	return
 }
 
 func (self * Session_t) Size() (res [][3]int) {
-	res = append(res, [3]int{})
+	var temp [3]int
 	for i := uint64(0); i < self.shards; i++ {
-		self.size_bucket(i, &res[0])
+		a, b := self.bucket[i].Size()
+		temp[1] += a
+		temp[2] += b
 	}
-	return
+	temp[0] = int(self.shards)
+	return [][3]int{temp}
 }
 
 func (self * Session_t) TTL() int64 {
