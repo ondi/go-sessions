@@ -49,6 +49,10 @@ func (self StatList_t) Swap(i int, j int) {
 	self[i], self[j] = self[j], self[i]
 }
 
+func (self StatList_t) Less(i int, j int) bool {
+	return self[i].Stat.Hits < self[j].Stat.Hits
+}
+
 type Bucket_t struct {
 	mx sync.Mutex
 	cc * cache.Cache
