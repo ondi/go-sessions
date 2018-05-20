@@ -79,6 +79,12 @@ func NewStorage(ttl int64, count int) (self * Storage_t) {
 	self = &Storage_t{}
 	self.cc = cache.New()
 	self.stats = make(map[interface{}]*Stat_t)
+	if ttl <= 0 {
+		ttl = 1 << 63 - 1
+	}
+	if count <= 0 {
+		count = 1 << 63 - 1
+	}
 	self.ttl = ttl
 	self.count = count
 	return

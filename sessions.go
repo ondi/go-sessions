@@ -15,12 +15,6 @@ type Session_t struct {
 
 func New(shards uint64, ttl int64, count int) (self * Session_t) {
 	self = &Session_t{}
-	if ttl <= 0 {
-		ttl = 1 << 63 - 1
-	}
-	if count <= 0 {
-		count = 1 << 63 - 1
-	}
 	self.shards = shards
 	for i := uint64(0); i < shards; i++ {
 		self.bucket = append(self.bucket, NewBucket(ttl, count))
