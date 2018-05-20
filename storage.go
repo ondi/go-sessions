@@ -1,5 +1,5 @@
 //
-// Session Tracking
+// Session Tracking Raw Logic
 //
 
 package sessions
