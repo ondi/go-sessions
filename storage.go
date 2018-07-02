@@ -90,7 +90,7 @@ func NewStorage(ttl int64, count int) (self * Storage_t) {
 }
 
 func (self * Storage_t) remove(it * cache.Value_t, evicted Evict) {
-	value := Value_t{Key_t: it.Key().(Key_t), Mapped_t: *it.Mapped().(* Mapped_t)}
+	value := Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Mapped().(Mapped_t)}
 	stat := self.stats[value.Domain]
 	if stat.Sessions > 1 {
 		stat.Sessions--
@@ -107,7 +107,7 @@ func (self * Storage_t) remove(it * cache.Value_t, evicted Evict) {
 }
 
 func (self * Storage_t) evict_last(LastTs int64, keep int, evicted Evict) bool {
-	if it := self.cc.Back(); it != self.cc.End() && (LastTs - it.Mapped().(* Mapped_t).LastTs > self.ttl || self.cc.Size() > keep) {
+	if it := self.cc.Back(); it != self.cc.End() && (LastTs - it.Mapped().(Mapped_t).LastTs > self.ttl || self.cc.Size() > keep) {
 		self.remove(it, evicted)
 		return true
 	}
@@ -133,7 +133,7 @@ func (self * Storage_t) Remove(Domain interface{}, UID interface{}, evicted Evic
 
 func (self * Storage_t) ListFront(evicted Evict) bool {
 	for it := self.cc.Front(); it != self.cc.End(); it = it.Next() {
-		if evicted.Evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: *it.Mapped().(* Mapped_t)}) == false {
+		if evicted.Evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Mapped().(Mapped_t)}) == false {
 			return false
 		}
 	}
@@ -142,7 +142,7 @@ func (self * Storage_t) ListFront(evicted Evict) bool {
 
 func (self * Storage_t) ListBack(evicted Evict) bool {
 	for it := self.cc.Back(); it != self.cc.End(); it = it.Prev() {
-		if evicted.Evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: *it.Mapped().(* Mapped_t)}) == false {
+		if evicted.Evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Mapped().(Mapped_t)}) == false {
 			return false
 		}
 	}
@@ -151,11 +151,10 @@ func (self * Storage_t) ListBack(evicted Evict) bool {
 
 func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Data func () interface{}, evicted Evict) (LastTs int64, Diff int64, Mapped Mapped_t) {
 	for self.evict_last(Ts, self.count, evicted) {}
-	key := Key_t{Domain: Domain, UID: UID}
-	mapped := &Mapped_t{Hits: 1, Duration: 0, FirstTs: Ts, LastTs: Ts, Data: nil}
-	it, ok := self.cc.PushFront(key, mapped)
+	it, ok := self.cc.PushFront(Key_t{Domain: Domain, UID: UID}, Mapped_t{})
 	if ok {
-		mapped.Data = Data()
+		Mapped = Mapped_t{Hits: 1, Duration: 0, FirstTs: Ts, LastTs: Ts, Data: Data()}
+		it.Update(Mapped)
 		if stat, ok := self.stats[Domain]; ok {
 			stat.Hits++
 			stat.Sessions++
@@ -163,27 +162,26 @@ func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Da
 		} else {
 			self.stats[Domain] = &Stat_t{Hits: 1, Sessions: 1, Bounces: 1, Duration: 0}
 		}
-		Mapped = *mapped
 		return
 	}
-	mapped = it.Mapped().(* Mapped_t)
-	LastTs = mapped.LastTs
-	if Ts >= mapped.LastTs {
-		Diff = Ts - mapped.LastTs
-		mapped.LastTs = Ts
-	} else if Ts <= mapped.FirstTs {
-		Diff = mapped.FirstTs - Ts
-		mapped.FirstTs = Ts
+	Mapped = it.Mapped().(Mapped_t)
+	LastTs = Mapped.LastTs
+	if Ts >= Mapped.LastTs {
+		Diff = Ts - Mapped.LastTs
+		Mapped.LastTs = Ts
+	} else if Ts <= Mapped.FirstTs {
+		Diff = Mapped.FirstTs - Ts
+		Mapped.FirstTs = Ts
 	}
-	mapped.Hits++
-	mapped.Duration += Diff
+	Mapped.Hits++
+	Mapped.Duration += Diff
 	stat := self.stats[Domain]
-	if mapped.Hits == 2 {
+	if Mapped.Hits == 2 {
 		stat.Bounces--
 	}
 	stat.Hits++
 	stat.Duration += Diff
-	Mapped = *mapped
+	it.Update(Mapped)
 	return
 }
 
