@@ -90,7 +90,7 @@ func NewStorage(ttl int64, count int) (self * Storage_t) {
 }
 
 func (self * Storage_t) remove(it * cache.Value_t, evicted Evict) {
-	value := Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Mapped().(Mapped_t)}
+	value := Value_t{Key_t: it.Key().(Key_t), Mapped_t: *it.Mapped().(* Mapped_t)}
 	stat := self.stats[value.Domain]
 	if stat.Sessions > 1 {
 		stat.Sessions--
@@ -107,7 +107,7 @@ func (self * Storage_t) remove(it * cache.Value_t, evicted Evict) {
 }
 
 func (self * Storage_t) evict_last(LastTs int64, keep int, evicted Evict) bool {
-	if it := self.cc.Back(); it != self.cc.End() && (LastTs - it.Mapped().(Mapped_t).LastTs > self.ttl || self.cc.Size() > keep) {
+	if it := self.cc.Back(); it != self.cc.End() && (LastTs - it.Mapped().(* Mapped_t).LastTs > self.ttl || self.cc.Size() > keep) {
 		self.remove(it, evicted)
 		return true
 	}
@@ -133,7 +133,7 @@ func (self * Storage_t) Remove(Domain interface{}, UID interface{}, evicted Evic
 
 func (self * Storage_t) ListFront(evicted Evict) bool {
 	for it := self.cc.Front(); it != self.cc.End(); it = it.Next() {
-		if evicted.Evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Mapped().(Mapped_t)}) == false {
+		if evicted.Evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: *it.Mapped().(* Mapped_t)}) == false {
 			return false
 		}
 	}
@@ -142,7 +142,7 @@ func (self * Storage_t) ListFront(evicted Evict) bool {
 
 func (self * Storage_t) ListBack(evicted Evict) bool {
 	for it := self.cc.Back(); it != self.cc.End(); it = it.Prev() {
-		if evicted.Evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Mapped().(Mapped_t)}) == false {
+		if evicted.Evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: *it.Mapped().(* Mapped_t)}) == false {
 			return false
 		}
 	}
