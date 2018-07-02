@@ -1,5 +1,5 @@
 //
-// Session Tracking Raw Logic
+// Session Tracking Logic
 //
 
 package sessions
@@ -16,8 +16,7 @@ type Mapped_t struct {
 	Duration int64
 	FirstTs int64
 	LastTs int64
-	FirstData interface{}
-	LastData interface{}
+	Data interface{}
 }
 
 type Value_t struct {
@@ -150,12 +149,13 @@ func (self * Storage_t) ListBack(evicted Evict) bool {
 	return true
 }
 
-func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Data interface{}, evicted Evict) (LastTs int64, Diff int64, Mapped Mapped_t) {
+func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Data func () interface{}, evicted Evict) (LastTs int64, Diff int64, Mapped Mapped_t) {
 	for self.evict_last(Ts, self.count, evicted) {}
 	key := Key_t{Domain: Domain, UID: UID}
-	Mapped = Mapped_t{FirstData: Data, LastData: Data, Hits: 1, Duration: 0, FirstTs: Ts, LastTs: Ts}
-	it, ok := self.cc.PushFront(key, Mapped)
+	mapped := &Mapped_t{Hits: 1, Duration: 0, FirstTs: Ts, LastTs: Ts, Data: nil}
+	it, ok := self.cc.PushFront(key, mapped)
 	if ok {
+		mapped.Data = Data()
 		if stat, ok := self.stats[Domain]; ok {
 			stat.Hits++
 			stat.Sessions++
@@ -163,34 +163,27 @@ func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Da
 		} else {
 			self.stats[Domain] = &Stat_t{Hits: 1, Sessions: 1, Bounces: 1, Duration: 0}
 		}
+		Mapped = *mapped
 		return
 	}
-	Mapped = it.Mapped().(Mapped_t)
-	LastTs = Mapped.LastTs
-	if Ts >= Mapped.LastTs {
-		Diff = Ts - Mapped.LastTs
-		Mapped.LastTs = Ts
-		// Mapped.LastData = Data
-	} else if Ts <= Mapped.FirstTs {
-		Diff = Mapped.FirstTs - Ts
-		Mapped.FirstTs = Ts
-		// Mapped.FirstData = Data
+	mapped = it.Mapped().(* Mapped_t)
+	LastTs = mapped.LastTs
+	if Ts >= mapped.LastTs {
+		Diff = Ts - mapped.LastTs
+		mapped.LastTs = Ts
+	} else if Ts <= mapped.FirstTs {
+		Diff = mapped.FirstTs - Ts
+		mapped.FirstTs = Ts
 	}
-	if Data != nil {
-		Mapped.LastData = Data
-		if Mapped.FirstData == nil {
-			Mapped.FirstData = Data
-		}
-	}
-	Mapped.Hits++
-	Mapped.Duration += Diff
+	mapped.Hits++
+	mapped.Duration += Diff
 	stat := self.stats[Domain]
-	if Mapped.Hits == 2 {
+	if mapped.Hits == 2 {
 		stat.Bounces--
 	}
 	stat.Hits++
 	stat.Duration += Diff
-	it.Update(Mapped)
+	Mapped = *mapped
 	return
 }
 

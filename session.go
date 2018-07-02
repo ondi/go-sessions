@@ -47,7 +47,7 @@ func (self * Session_t) ListBack(evicted Evict) bool {
 	return self.storage.ListBack(evicted)
 }
 
-func (self * Session_t) Update(Ts int64, Domain interface{}, UID interface{}, Data interface{}, evicted Evict) (LastTs int64, Diff int64, Mapped Mapped_t) {
+func (self * Session_t) Update(Ts int64, Domain interface{}, UID interface{}, Data func () interface{}, evicted Evict) (LastTs int64, Diff int64, Mapped Mapped_t) {
 	self.mx.Lock()
 	defer self.mx.Unlock()
 	return self.storage.Update(Ts, Domain,UID, Data, evicted)
