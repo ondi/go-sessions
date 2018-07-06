@@ -59,7 +59,7 @@ func (self * Session_t) Stat(Domain interface{}) Stat_t {
 	return self.storage.Stat(Domain)
 }
 
-func (self * Session_t) StatList() (res StatList_t) {
+func (self * Session_t) StatList() (res []StatRow_t) {
 	self.mx.Lock()
 	defer self.mx.Unlock()
 	return self.storage.StatList()

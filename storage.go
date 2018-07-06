@@ -36,20 +36,6 @@ type StatRow_t struct {
 	Stat Stat_t
 }
 
-type StatList_t []StatRow_t
-
-func (self StatList_t) Len() int {
-	return len(self)
-}
-
-func (self StatList_t) Swap(i int, j int) {
-	self[i], self[j] = self[j], self[i]
-}
-
-func (self StatList_t) Less(i int, j int) bool {
-	return self[i].Stat.Hits < self[j].Stat.Hits
-}
-
 type Storage_t struct {
 	cc * cache.Cache
 	stats map[interface{}]*Stat_t
@@ -192,7 +178,7 @@ func (self * Storage_t) Stat(Domain interface{}) Stat_t {
 	return Stat_t{}
 }
 
-func (self * Storage_t) StatList() (res StatList_t) {
+func (self * Storage_t) StatList() (res []StatRow_t) {
 	for k, v := range self.stats {
 		res = append(res, StatRow_t{k, *v})
 	}
