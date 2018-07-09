@@ -63,7 +63,7 @@ func (Drop_t) Evict(Value_t) bool {
 func NewStorage(ttl int64, count int) (self * Storage_t) {
 	self = &Storage_t{}
 	self.cc = cache.New()
-	self.stats = make(map[interface{}]*Stat_t)
+	self.stats = map[interface{}]*Stat_t{}
 	if ttl <= 0 {
 		ttl = 1 << 63 - 1
 	}
@@ -73,6 +73,17 @@ func NewStorage(ttl int64, count int) (self * Storage_t) {
 	self.ttl = ttl
 	self.count = count
 	return
+}
+
+func (self * Storage_t) evict_last(LastTs int64, keep int, evicted Evict) bool {
+	if it := self.cc.Back(); it != self.cc.End() {
+		m := it.Mapped().(Mapped_t)
+		if self.cc.Size() > keep || LastTs - m.LastTs > self.ttl || m.FirstTs - LastTs > self.ttl {
+			self.remove(it, evicted)
+			return true
+		}
+	}
+	return false
 }
 
 func (self * Storage_t) remove(it * cache.Value_t, evicted Evict) {
@@ -92,17 +103,9 @@ func (self * Storage_t) remove(it * cache.Value_t, evicted Evict) {
 	evicted.Evict(value)
 }
 
-func (self * Storage_t) evict_last(LastTs int64, keep int, evicted Evict) bool {
-	if it := self.cc.Back(); it != self.cc.End() && (LastTs - it.Mapped().(Mapped_t).LastTs > self.ttl || self.cc.Size() > keep) {
-		self.remove(it, evicted)
-		return true
-	}
-	return false
-}
-
 func (self * Storage_t) Clear() {
 	self.cc = cache.New()
-	self.stats = make(map[interface{}]*Stat_t)
+	self.stats = map[interface{}]*Stat_t{}
 }
 
 func (self * Storage_t) Flush(LastTs int64, keep int, evicted Evict) {
@@ -115,24 +118,6 @@ func (self * Storage_t) Remove(Domain interface{}, UID interface{}, evicted Evic
 		return true
 	}
 	return false
-}
-
-func (self * Storage_t) ListFront(evicted Evict) bool {
-	for it := self.cc.Front(); it != self.cc.End(); it = it.Next() {
-		if evicted.Evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Mapped().(Mapped_t)}) == false {
-			return false
-		}
-	}
-	return true
-}
-
-func (self * Storage_t) ListBack(evicted Evict) bool {
-	for it := self.cc.Back(); it != self.cc.End(); it = it.Prev() {
-		if evicted.Evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Mapped().(Mapped_t)}) == false {
-			return false
-		}
-	}
-	return true
 }
 
 func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Data func () interface{}, evicted Evict) (LastTs int64, Diff int64, Mapped Mapped_t) {
@@ -169,6 +154,24 @@ func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Da
 	stat.Duration += Diff
 	it.Update(Mapped)
 	return
+}
+
+func (self * Storage_t) ListFront(evicted Evict) bool {
+	for it := self.cc.Front(); it != self.cc.End(); it = it.Next() {
+		if evicted.Evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Mapped().(Mapped_t)}) == false {
+			return false
+		}
+	}
+	return true
+}
+
+func (self * Storage_t) ListBack(evicted Evict) bool {
+	for it := self.cc.Back(); it != self.cc.End(); it = it.Prev() {
+		if evicted.Evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Mapped().(Mapped_t)}) == false {
+			return false
+		}
+	}
+	return true
 }
 
 func (self * Storage_t) Stat(Domain interface{}) Stat_t {
