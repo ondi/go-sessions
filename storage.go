@@ -75,10 +75,10 @@ func NewStorage(ttl int64, count int) (self * Storage_t) {
 	return
 }
 
-func (self * Storage_t) evict_last(LastTs int64, keep int, evicted Evict) bool {
+func (self * Storage_t) evict_last(Ts int64, keep int, evicted Evict) bool {
 	if it := self.cc.Back(); it != self.cc.End() {
 		m := it.Mapped().(Mapped_t)
-		if self.cc.Size() > keep || LastTs - m.LastTs > self.ttl || m.FirstTs - LastTs > self.ttl {
+		if self.cc.Size() > keep || Ts - m.LastTs > self.ttl || m.FirstTs - Ts > self.ttl {
 			self.remove(it, evicted)
 			return true
 		}
@@ -108,8 +108,8 @@ func (self * Storage_t) Clear() {
 	self.stats = map[interface{}]*Stat_t{}
 }
 
-func (self * Storage_t) Flush(LastTs int64, keep int, evicted Evict) {
-	for self.evict_last(LastTs, keep, evicted) {}
+func (self * Storage_t) Flush(Ts int64, keep int, evicted Evict) {
+	for self.evict_last(Ts, keep, evicted) {}
 }
 
 func (self * Storage_t) Remove(Domain interface{}, UID interface{}, evicted Evict) bool {
@@ -137,10 +137,10 @@ func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Da
 	}
 	Mapped = it.Mapped().(Mapped_t)
 	LastTs = Mapped.LastTs
-	if Ts >= Mapped.LastTs {
+	if Ts > Mapped.LastTs {
 		Diff = Ts - Mapped.LastTs
 		Mapped.LastTs = Ts
-	} else if Ts <= Mapped.FirstTs {
+	} else if Ts < Mapped.FirstTs {
 		Diff = Mapped.FirstTs - Ts
 		Mapped.FirstTs = Ts
 	}
