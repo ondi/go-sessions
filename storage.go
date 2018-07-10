@@ -120,7 +120,7 @@ func (self * Storage_t) Remove(Domain interface{}, UID interface{}, evicted Evic
 	return false
 }
 
-func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Data func () interface{}, evicted Evict) (LastTs int64, Diff int64, Mapped Mapped_t) {
+func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Data func () interface{}, evicted Evict) (Diff int64, Mapped Mapped_t) {
 	for self.evict_last(Ts, self.count, evicted) {}
 	it, ok := self.cc.PushFront(Key_t{Domain: Domain, UID: UID}, Mapped_t{})
 	if ok {
@@ -136,7 +136,6 @@ func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Da
 		return
 	}
 	Mapped = it.Mapped().(Mapped_t)
-	LastTs = Mapped.LastTs
 	if Ts > Mapped.LastTs {
 		Diff = Ts - Mapped.LastTs
 		Mapped.LastTs = Ts

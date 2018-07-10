@@ -59,7 +59,7 @@ func (self * Sessions_t) ListBack(evicted Evict) {
 	}
 }
 
-func (self * Sessions_t) Update(Ts int64, Domain ID64_t, UID interface{}, Data func () interface{}, evicted Evict) (LastTs int64, Diff int64, Mapped Mapped_t) {
+func (self * Sessions_t) Update(Ts int64, Domain ID64_t, UID interface{}, Data func () interface{}, evicted Evict) (Diff int64, Mapped Mapped_t) {
 	i := self.get_bucket(Domain)
 	return self.bucket[i].Update(Ts, Domain, UID, Data, evicted)
 }
