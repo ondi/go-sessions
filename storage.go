@@ -14,8 +14,8 @@ type Key_t struct {
 type Mapped_t struct {
 	Hits int64
 	Duration int64
-	FirstTs int64
-	LastTs int64
+	LeftTs int64
+	RightTs int64
 	Data interface{}
 }
 
@@ -78,7 +78,7 @@ func NewStorage(ttl int64, count int) (self * Storage_t) {
 func (self * Storage_t) evict_last(Ts int64, keep int, evicted Evict) bool {
 	if it := self.cc.Back(); it != self.cc.End() {
 		m := it.Mapped().(Mapped_t)
-		if self.cc.Size() > keep || Ts - m.LastTs > self.ttl || m.FirstTs - Ts > self.ttl {
+		if self.cc.Size() > keep || Ts - m.RightTs > self.ttl || m.LeftTs - Ts > self.ttl {
 			self.remove(it, evicted)
 			return true
 		}
@@ -124,7 +124,7 @@ func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Da
 	for self.evict_last(Ts, self.count, evicted) {}
 	it, ok := self.cc.PushFront(Key_t{Domain: Domain, UID: UID}, Mapped_t{})
 	if ok {
-		Mapped = Mapped_t{Hits: 1, Duration: 0, FirstTs: Ts, LastTs: Ts, Data: Data()}
+		Mapped = Mapped_t{Hits: 1, Duration: 0, LeftTs: Ts, RightTs: Ts, Data: Data()}
 		it.Update(Mapped)
 		if stat, ok := self.stats[Domain]; ok {
 			stat.Hits++
@@ -136,12 +136,12 @@ func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Da
 		return
 	}
 	Mapped = it.Mapped().(Mapped_t)
-	if Ts > Mapped.LastTs {
-		Diff = Ts - Mapped.LastTs
-		Mapped.LastTs = Ts
-	} else if Ts < Mapped.FirstTs {
-		Diff = Mapped.FirstTs - Ts
-		Mapped.FirstTs = Ts
+	if Ts > Mapped.RightTs {
+		Diff = Ts - Mapped.RightTs
+		Mapped.RightTs = Ts
+	} else if Ts < Mapped.LeftTs {
+		Diff = Mapped.LeftTs - Ts
+		Mapped.LeftTs = Ts
 	}
 	Mapped.Hits++
 	Mapped.Duration += Diff
