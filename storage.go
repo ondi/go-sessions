@@ -187,6 +187,10 @@ func (self * Storage_t) StatList() (res []StatRow_t) {
 	return
 }
 
-func (self * Storage_t) Size() (int, int) {
-	return len(self.stats), self.cc.Size()
+func (self * Storage_t) Size() int {
+	return self.cc.Size()
+}
+
+func (self * Storage_t) StatSize() int {
+	return len(self.stats)
 }

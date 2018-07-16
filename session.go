@@ -53,6 +53,14 @@ func (self * Session_t) Update(Ts int64, Domain interface{}, UID interface{}, Da
 	return self.storage.Update(Ts, Domain,UID, Data, evicted)
 }
 
+func (self * Session_t) Update2(Ts int64, Domain interface{}, UID interface{}, Data func () interface{}, evicted Evict) (Size int, Diff int64, Mapped Mapped_t) {
+	self.mx.Lock()
+	defer self.mx.Unlock()
+	Size = self.storage.Size()
+	Diff, Mapped = self.storage.Update(Ts, Domain,UID, Data, evicted)
+	return
+}
+
 func (self * Session_t) Stat(Domain interface{}) Stat_t {
 	self.mx.Lock()
 	defer self.mx.Unlock()
@@ -68,5 +76,5 @@ func (self * Session_t) StatList() (res []StatRow_t) {
 func (self * Session_t) Size() (int, int) {
 	self.mx.Lock()
 	defer self.mx.Unlock()
-	return self.storage.Size()
+	return self.storage.StatSize(), self.storage.Size()
 }

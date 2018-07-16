@@ -64,6 +64,11 @@ func (self * Sessions_t) Update(Ts int64, Domain ID64_t, UID interface{}, Data f
 	return self.bucket[i].Update(Ts, Domain, UID, Data, evicted)
 }
 
+func (self * Sessions_t) Update2(Ts int64, Domain ID64_t, UID interface{}, Data func () interface{}, evicted Evict) (Size int, Diff int64, Mapped Mapped_t) {
+	i := self.get_bucket(Domain)
+	return self.bucket[i].Update2(Ts, Domain, UID, Data, evicted)
+}
+
 func (self * Sessions_t) Stat(Domain ID64_t) (stat Stat_t) {
 	i := self.get_bucket(Domain)
 	return self.bucket[i].Stat(Domain)
