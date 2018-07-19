@@ -11,12 +11,16 @@ type Key_t struct {
 	UID interface{}
 }
 
+type Data_t interface {
+	Lock()
+}
+
 type Mapped_t struct {
 	Hits int64
 	Duration int64
 	LeftTs int64
 	RightTs int64
-	Data interface{}
+	Data Data_t
 }
 
 type Value_t struct {
@@ -120,11 +124,12 @@ func (self * Storage_t) Remove(Domain interface{}, UID interface{}, evicted Evic
 	return false
 }
 
-func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Data func () interface{}, evicted Evict) (Diff int64, Mapped Mapped_t) {
+func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Data func () Data_t, evicted Evict) (Diff int64, Mapped Mapped_t) {
 	for self.evict_last(Ts, self.count, evicted) {}
 	it, ok := self.cc.PushFront(Key_t{Domain: Domain, UID: UID}, Mapped_t{})
 	if ok {
 		Mapped = Mapped_t{Hits: 1, Duration: 0, LeftTs: Ts, RightTs: Ts, Data: Data()}
+		Mapped.Data.Lock()
 		it.Update(Mapped)
 		if stat, ok := self.stats[Domain]; ok {
 			stat.Hits++
@@ -136,6 +141,7 @@ func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Da
 		return
 	}
 	Mapped = it.Mapped().(Mapped_t)
+	Mapped.Data.Lock()
 	if Ts > Mapped.RightTs {
 		Diff = Ts - Mapped.RightTs
 		Mapped.RightTs = Ts
