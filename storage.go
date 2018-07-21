@@ -17,7 +17,6 @@ type Data_t interface {
 
 type Mapped_t struct {
 	Hits int64
-	Duration int64
 	LeftTs int64
 	RightTs int64
 	Data Data_t
@@ -99,7 +98,7 @@ func (self * Storage_t) remove(it * cache.Value_t, evicted Evict) {
 			stat.Bounces--
 		}
 		stat.Hits -= value.Hits
-		stat.Duration -= value.Duration
+		stat.Duration -= value.RightTs - value.LeftTs
 	} else {
 		delete(self.stats, value.Domain)
 	}
@@ -128,7 +127,7 @@ func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Da
 	self.Flush(Ts, self.count, evicted)
 	it, ok := self.cc.PushFront(Key_t{Domain: Domain, UID: UID}, Mapped_t{})
 	if ok {
-		Mapped = Mapped_t{Hits: 1, Duration: 0, LeftTs: Ts, RightTs: Ts, Data: Data()}
+		Mapped = Mapped_t{Hits: 1, LeftTs: Ts, RightTs: Ts, Data: Data()}
 		it.Update(Mapped)
 		if stat, ok := self.stats[Domain]; ok {
 			stat.Hits++
@@ -153,7 +152,6 @@ func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Da
 		Mapped.LeftTs = Ts
 	}
 	Mapped.Hits++
-	Mapped.Duration += Diff
 	stat := self.stats[Domain]
 	if Mapped.Hits == 2 {
 		stat.Bounces--
