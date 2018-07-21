@@ -11,9 +11,9 @@ type Session_t struct {
 	storage * Storage_t
 }
 
-func NewSession(ttl int64, count int) (self * Session_t) {
+func NewSession(ttl int64, count int, deferred bool) (self * Session_t) {
 	self = &Session_t{}
-	self.storage = NewStorage(ttl, count)
+	self.storage = NewStorage(ttl, count, deferred)
 	return
 }
 
@@ -51,14 +51,6 @@ func (self * Session_t) Update(Ts int64, Domain interface{}, UID interface{}, Da
 	self.mx.Lock()
 	defer self.mx.Unlock()
 	return self.storage.Update(Ts, Domain,UID, Data, evicted)
-}
-
-func (self * Session_t) Update2(Ts int64, Domain interface{}, UID interface{}, Data func () Data_t, evicted Evict) (Size int, Diff int64, Mapped Mapped_t) {
-	self.mx.Lock()
-	defer self.mx.Unlock()
-	Size = self.storage.Size()
-	Diff, Mapped = self.storage.Update(Ts, Domain,UID, Data, evicted)
-	return
 }
 
 func (self * Session_t) Stat(Domain interface{}) Stat_t {

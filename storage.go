@@ -45,6 +45,7 @@ type Storage_t struct {
 	stats map[interface{}]*Stat_t
 	ttl int64
 	count int
+	deferred bool
 }
 
 type Evict interface {
@@ -64,7 +65,7 @@ func (Drop_t) Evict(Value_t) bool {
 	return true
 }
 
-func NewStorage(ttl int64, count int) (self * Storage_t) {
+func NewStorage(ttl int64, count int, deferred bool) (self * Storage_t) {
 	self = &Storage_t{}
 	self.cc = cache.New()
 	self.stats = map[interface{}]*Stat_t{}
@@ -76,16 +77,15 @@ func NewStorage(ttl int64, count int) (self * Storage_t) {
 	}
 	self.ttl = ttl
 	self.count = count
+	self.deferred = deferred
 	return
 }
 
-func (self * Storage_t) evict_last(Ts int64, keep int, evicted Evict) bool {
-	if it := self.cc.Back(); it != self.cc.End() {
-		m := it.Mapped().(Mapped_t)
-		if self.cc.Size() > keep || Ts - m.RightTs > self.ttl || m.LeftTs - Ts > self.ttl {
-			self.remove(it, evicted)
-			return true
-		}
+func (self * Storage_t) evict(it * cache.Value_t, Ts int64, keep int, evicted Evict) bool {
+	Mapped := it.Mapped().(Mapped_t)
+	if self.cc.Size() > keep || self.deferred == false && (Ts - Mapped.RightTs > self.ttl || Mapped.LeftTs - Ts > self.ttl) {
+		self.remove(it, evicted)
+		return true
 	}
 	return false
 }
@@ -113,7 +113,7 @@ func (self * Storage_t) Clear() {
 }
 
 func (self * Storage_t) Flush(Ts int64, keep int, evicted Evict) {
-	for self.evict_last(Ts, keep, evicted) {}
+	for it := self.cc.Back(); it != self.cc.End() && self.evict(it, Ts, keep, evicted); it = it.Prev() {}
 }
 
 func (self * Storage_t) Remove(Domain interface{}, UID interface{}, evicted Evict) bool {
@@ -125,11 +125,10 @@ func (self * Storage_t) Remove(Domain interface{}, UID interface{}, evicted Evic
 }
 
 func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Data func () Data_t, evicted Evict) (Diff int64, Mapped Mapped_t) {
-	for self.evict_last(Ts, self.count, evicted) {}
+	self.Flush(Ts, self.count, evicted)
 	it, ok := self.cc.PushFront(Key_t{Domain: Domain, UID: UID}, Mapped_t{})
 	if ok {
 		Mapped = Mapped_t{Hits: 1, Duration: 0, LeftTs: Ts, RightTs: Ts, Data: Data()}
-		Mapped.Data.Lock()
 		it.Update(Mapped)
 		if stat, ok := self.stats[Domain]; ok {
 			stat.Hits++
@@ -138,10 +137,14 @@ func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Da
 		} else {
 			self.stats[Domain] = &Stat_t{Hits: 1, Sessions: 1, Bounces: 1, Duration: 0}
 		}
+		Mapped.Data.Lock()
 		return
 	}
 	Mapped = it.Mapped().(Mapped_t)
-	Mapped.Data.Lock()
+	if self.deferred && (Ts - Mapped.RightTs > self.ttl || Mapped.LeftTs - Ts > self.ttl) {
+		self.remove(it, evicted)
+		return self.Update(Ts, Domain, UID, Data, evicted)
+	}
 	if Ts > Mapped.RightTs {
 		Diff = Ts - Mapped.RightTs
 		Mapped.RightTs = Ts
@@ -158,6 +161,7 @@ func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Da
 	stat.Hits++
 	stat.Duration += Diff
 	it.Update(Mapped)
+	Mapped.Data.Lock()
 	return
 }
 

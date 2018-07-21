@@ -13,11 +13,11 @@ type Sessions_t struct {
 	bucket []*Session_t
 }
 
-func NewSessions(shards uint64, ttl int64, count int) (self * Sessions_t) {
+func NewSessions(shards uint64, ttl int64, count int, deferred bool) (self * Sessions_t) {
 	self = &Sessions_t{}
 	self.shards = shards
 	for i := uint64(0); i < shards; i++ {
-		self.bucket = append(self.bucket, NewSession(ttl, count))
+		self.bucket = append(self.bucket, NewSession(ttl, count, deferred))
 	}
 	return
 }
@@ -62,11 +62,6 @@ func (self * Sessions_t) ListBack(evicted Evict) {
 func (self * Sessions_t) Update(Ts int64, Domain ID64_t, UID interface{}, Data func () Data_t, evicted Evict) (Diff int64, Mapped Mapped_t) {
 	i := self.get_bucket(Domain)
 	return self.bucket[i].Update(Ts, Domain, UID, Data, evicted)
-}
-
-func (self * Sessions_t) Update2(Ts int64, Domain ID64_t, UID interface{}, Data func () Data_t, evicted Evict) (Size int, Diff int64, Mapped Mapped_t) {
-	i := self.get_bucket(Domain)
-	return self.bucket[i].Update2(Ts, Domain, UID, Data, evicted)
 }
 
 func (self * Sessions_t) Stat(Domain ID64_t) (stat Stat_t) {
