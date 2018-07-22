@@ -108,7 +108,7 @@ func (self * Storage_t) remove(it * cache.Value_t, evicted Evict) {
 
 func (self * Storage_t) push_front(Ts int64, Domain interface{}, UID interface{}, Data func () Data_t, evicted Evict) (it * cache.Value_t, ok bool, Mapped Mapped_t) {
 	if it, ok = self.cc.PushFront(Key_t{Domain: Domain, UID: UID}, Mapped_t{}); ok {
-		it.Update(Mapped_t{Hits: 1, LeftTs: Ts, RightTs: Ts, Data: Data()})
+		Mapped = Mapped_t{Hits: 1, LeftTs: Ts, RightTs: Ts, Data: Data()}
 		if stat, ok := self.stats[Domain]; ok {
 			stat.Hits++
 			stat.Sessions++
@@ -116,9 +116,11 @@ func (self * Storage_t) push_front(Ts int64, Domain interface{}, UID interface{}
 		} else {
 			self.stats[Domain] = &Stat_t{Hits: 1, Sessions: 1, Bounces: 1, Duration: 0}
 		}
+		it.Update(Mapped)
+		Mapped.Data.Lock()
+	} else {
+		Mapped = it.Mapped().(Mapped_t)
 	}
-	Mapped = it.Mapped().(Mapped_t)
-	Mapped.Data.Lock()
 	return
 }
 
@@ -166,6 +168,7 @@ func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Da
 	stat.Hits++
 	stat.Duration += Diff
 	it.Update(Mapped)
+	Mapped.Data.Lock()
 	return
 }
 
