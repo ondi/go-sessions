@@ -106,6 +106,22 @@ func (self * Storage_t) remove(it * cache.Value_t, evicted Evict) {
 	evicted.Evict(value)
 }
 
+func (self * Storage_t) push_front(Ts int64, Domain interface{}, UID interface{}, Data func () Data_t, evicted Evict) (it * cache.Value_t, ok bool, Mapped Mapped_t) {
+	if it, ok = self.cc.PushFront(Key_t{Domain: Domain, UID: UID}, Mapped_t{}); ok {
+		it.Update(Mapped_t{Hits: 1, LeftTs: Ts, RightTs: Ts, Data: Data()})
+		if stat, ok := self.stats[Domain]; ok {
+			stat.Hits++
+			stat.Sessions++
+			stat.Bounces++
+		} else {
+			self.stats[Domain] = &Stat_t{Hits: 1, Sessions: 1, Bounces: 1, Duration: 0}
+		}
+	}
+	Mapped = it.Mapped().(Mapped_t)
+	Mapped.Data.Lock()
+	return
+}
+
 func (self * Storage_t) Clear() {
 	self.cc = cache.New()
 	self.stats = map[interface{}]*Stat_t{}
@@ -124,25 +140,16 @@ func (self * Storage_t) Remove(Domain interface{}, UID interface{}, evicted Evic
 }
 
 func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Data func () Data_t, evicted Evict) (Diff int64, Mapped Mapped_t) {
+	var ok bool
+	var it * cache.Value_t
 	self.Flush(Ts, self.count, evicted)
-	it, ok := self.cc.PushFront(Key_t{Domain: Domain, UID: UID}, Mapped_t{})
-	if ok {
-		Mapped = Mapped_t{Hits: 1, LeftTs: Ts, RightTs: Ts, Data: Data()}
-		it.Update(Mapped)
-		if stat, ok := self.stats[Domain]; ok {
-			stat.Hits++
-			stat.Sessions++
-			stat.Bounces++
-		} else {
-			self.stats[Domain] = &Stat_t{Hits: 1, Sessions: 1, Bounces: 1, Duration: 0}
-		}
-		Mapped.Data.Lock()
+	if it, ok, Mapped = self.push_front(Ts, Domain, UID, Data, evicted); ok {
 		return
 	}
-	Mapped = it.Mapped().(Mapped_t)
 	if self.deferred && (Ts - Mapped.RightTs > self.ttl || Mapped.LeftTs - Ts > self.ttl) {
 		self.remove(it, evicted)
-		return self.Update(Ts, Domain, UID, Data, evicted)
+		_, _, Mapped = self.push_front(Ts, Domain, UID, Data, evicted)
+		return
 	}
 	if Ts > Mapped.RightTs {
 		Diff = Ts - Mapped.RightTs
@@ -159,7 +166,6 @@ func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Da
 	stat.Hits++
 	stat.Duration += Diff
 	it.Update(Mapped)
-	Mapped.Data.Lock()
 	return
 }
 
