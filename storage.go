@@ -106,7 +106,7 @@ func (self * Storage_t) remove(it * cache.Value_t, evicted Evict) {
 	evicted.Evict(value)
 }
 
-func (self * Storage_t) push_front(Ts int64, Domain interface{}, UID interface{}, Data func () Data_t, evicted Evict) (it * cache.Value_t, ok bool, Mapped Mapped_t) {
+func (self * Storage_t) push_front(Ts int64, Domain interface{}, UID interface{}, Data func () Data_t, evicted Evict) (it * cache.Value_t, Mapped Mapped_t, ok bool) {
 	if it, ok = self.cc.PushFront(Key_t{Domain: Domain, UID: UID}, Mapped_t{}); ok {
 		Mapped = Mapped_t{Hits: 1, LeftTs: Ts, RightTs: Ts, Data: Data()}
 		if stat, ok := self.stats[Domain]; ok {
@@ -145,14 +145,15 @@ func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Da
 	var ok bool
 	var it * cache.Value_t
 	self.Flush(Ts, self.count, evicted)
-	if it, ok, Mapped = self.push_front(Ts, Domain, UID, Data, evicted); ok {
+	if it, Mapped, ok = self.push_front(Ts, Domain, UID, Data, evicted); ok {
 		return
 	}
 	if self.deferred && (Ts - Mapped.RightTs > self.ttl || Mapped.LeftTs - Ts > self.ttl) {
 		self.remove(it, evicted)
-		_, _, Mapped = self.push_front(Ts, Domain, UID, Data, evicted)
+		_, Mapped, _ = self.push_front(Ts, Domain, UID, Data, evicted)
 		return
 	}
+	Mapped.Hits++
 	if Ts > Mapped.RightTs {
 		Diff = Ts - Mapped.RightTs
 		Mapped.RightTs = Ts
@@ -160,12 +161,11 @@ func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Da
 		Diff = Mapped.LeftTs - Ts
 		Mapped.LeftTs = Ts
 	}
-	Mapped.Hits++
 	stat := self.stats[Domain]
+	stat.Hits++
 	if Mapped.Hits == 2 {
 		stat.Bounces--
 	}
-	stat.Hits++
 	stat.Duration += Diff
 	it.Update(Mapped)
 	Mapped.Data.Lock()
