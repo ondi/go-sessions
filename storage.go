@@ -94,7 +94,7 @@ func (self * Storage_t) Remove(Domain interface{}, UID interface{}, evicted Evic
 }
 
 func (self * Storage_t) Flush(Ts int64, keep int, evicted Evict) {
-	for it := self.cc.Back(); it != self.cc.End() && self.evict(it, Ts, self.deferred, keep, evicted); it = it.Prev() {}
+	for it := self.cc.Back(); it != self.cc.End() && self.evict(it, Ts, keep, evicted); it = it.Prev() {}
 }
 
 func (self * Storage_t) remove(it * cache.Value_t, evicted Evict) {
@@ -114,9 +114,9 @@ func (self * Storage_t) remove(it * cache.Value_t, evicted Evict) {
 	evicted.Evict(value)
 }
 
-func (self * Storage_t) evict(it * cache.Value_t, Ts int64, deferred bool, keep int, evicted Evict) bool {
+func (self * Storage_t) evict(it * cache.Value_t, Ts int64, keep int, evicted Evict) bool {
 	Mapped := it.Mapped().(Mapped_t)
-	if self.cc.Size() > keep || deferred == false && (Ts - Mapped.RightTs > self.ttl || Mapped.LeftTs - Ts > self.ttl) {
+	if self.cc.Size() > keep || self.deferred == false && (Ts - Mapped.RightTs > self.ttl || Mapped.LeftTs - Ts > self.ttl) {
 		self.remove(it, evicted)
 		return true
 	}
@@ -148,7 +148,8 @@ func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Da
 	if it, Mapped, ok = self.push_front(Ts, Domain, UID, Data, evicted); ok {
 		return
 	}
-	if self.evict(it, Ts, false, self.count, evicted) {
+	if self.deferred && (Ts - Mapped.RightTs > self.ttl || Mapped.LeftTs - Ts > self.ttl) {
+		self.remove(it, evicted)
 		_, Mapped, _ = self.push_front(Ts, Domain, UID, Data, evicted)
 		return
 	}
