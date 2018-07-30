@@ -80,6 +80,23 @@ func NewStorage(ttl int64, count int, deferred bool) (self * Storage_t) {
 	return
 }
 
+func (self * Storage_t) Clear() {
+	self.cc = cache.New()
+	self.stats = map[interface{}]*Stat_t{}
+}
+
+func (self * Storage_t) Flush(Ts int64, keep int, evicted Evict) {
+	for it := self.cc.Back(); it != self.cc.End() && self.evict(it, Ts, keep, evicted); it = it.Prev() {}
+}
+
+func (self * Storage_t) Remove(Domain interface{}, UID interface{}, evicted Evict) bool {
+	if it := self.cc.Find(Key_t{Domain: Domain, UID: UID}); it != self.cc.End() {
+		self.remove(it, evicted)
+		return true
+	}
+	return false
+}
+
 func (self * Storage_t) evict(it * cache.Value_t, Ts int64, keep int, evicted Evict) bool {
 	Mapped := it.Mapped().(Mapped_t)
 	if self.cc.Size() > keep || self.deferred == false && (Ts - Mapped.RightTs > self.ttl || Mapped.LeftTs - Ts > self.ttl) {
@@ -108,7 +125,6 @@ func (self * Storage_t) remove(it * cache.Value_t, evicted Evict) {
 
 func (self * Storage_t) push_front(Ts int64, Domain interface{}, UID interface{}, Data func () Data_t, evicted Evict) (it * cache.Value_t, Mapped Mapped_t, ok bool) {
 	if it, ok = self.cc.PushFront(Key_t{Domain: Domain, UID: UID}, Mapped_t{}); ok {
-		Mapped = Mapped_t{Hits: 1, LeftTs: Ts, RightTs: Ts, Data: Data()}
 		if stat, ok := self.stats[Domain]; ok {
 			stat.Hits++
 			stat.Sessions++
@@ -116,29 +132,13 @@ func (self * Storage_t) push_front(Ts int64, Domain interface{}, UID interface{}
 		} else {
 			self.stats[Domain] = &Stat_t{Hits: 1, Sessions: 1, Bounces: 1, Duration: 0}
 		}
+		Mapped = Mapped_t{Hits: 1, LeftTs: Ts, RightTs: Ts, Data: Data()}
 		it.Update(Mapped)
 		Mapped.Data.Lock()
 	} else {
 		Mapped = it.Mapped().(Mapped_t)
 	}
 	return
-}
-
-func (self * Storage_t) Clear() {
-	self.cc = cache.New()
-	self.stats = map[interface{}]*Stat_t{}
-}
-
-func (self * Storage_t) Flush(Ts int64, keep int, evicted Evict) {
-	for it := self.cc.Back(); it != self.cc.End() && self.evict(it, Ts, keep, evicted); it = it.Prev() {}
-}
-
-func (self * Storage_t) Remove(Domain interface{}, UID interface{}, evicted Evict) bool {
-	if it := self.cc.Find(Key_t{Domain: Domain, UID: UID}); it != self.cc.End() {
-		self.remove(it, evicted)
-		return true
-	}
-	return false
 }
 
 func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Data func () Data_t, evicted Evict) (Diff int64, Mapped Mapped_t) {
