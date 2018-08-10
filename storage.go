@@ -115,8 +115,8 @@ func (self * Storage_t) remove(it * cache.Value_t, evicted Evict) {
 }
 
 func (self * Storage_t) evict(it * cache.Value_t, Ts int64, keep int, evicted Evict) bool {
-	Mapped := it.Mapped().(Mapped_t)
-	if self.cc.Size() > keep || self.deferred == false && (Ts - Mapped.RightTs > self.ttl || Mapped.LeftTs - Ts > self.ttl) {
+	if self.cc.Size() > keep ||
+		self.deferred == false && (Ts - it.Mapped().(Mapped_t).RightTs > self.ttl || it.Mapped().(Mapped_t).LeftTs - Ts > self.ttl) {
 		self.remove(it, evicted)
 		return true
 	}
