@@ -12,6 +12,8 @@ type Key_t struct {
 }
 
 type Data_t interface {
+	NewDomain() interface{}
+	SetDomain(interface{})
 	Lock()
 }
 
@@ -32,6 +34,7 @@ type Stat_t struct {
 	Sessions int64
 	Bounces int64
 	Duration int64
+	Data interface{}
 }
 
 type StatRow_t struct {
@@ -125,19 +128,20 @@ func (self * Storage_t) evict(it * cache.Value_t, Ts int64, keep int, evicted Ev
 
 func (self * Storage_t) push_front(Ts int64, Domain interface{}, UID interface{}, Data func () Data_t, evicted Evict) (it * cache.Value_t, Mapped Mapped_t, ok bool) {
 	if it, ok = self.cc.PushFront(Key_t{Domain: Domain, UID: UID}, Mapped_t{}); ok {
-		if stat, ok := self.stats[Domain]; ok {
+		Mapped = Mapped_t{Hits: 1, LeftTs: Ts, RightTs: Ts, Data: Data()}
+		if stat, ok := self.stats[Domain]; !ok {
+			self.stats[Domain] = &Stat_t{Hits: 1, Sessions: 1, Bounces: 1, Duration: 0, Data: Mapped.Data.NewDomain()}
+		} else {
 			stat.Hits++
 			stat.Sessions++
 			stat.Bounces++
-		} else {
-			self.stats[Domain] = &Stat_t{Hits: 1, Sessions: 1, Bounces: 1, Duration: 0}
+			Mapped.Data.SetDomain(stat.Data)
 		}
-		Mapped = Mapped_t{Hits: 1, LeftTs: Ts, RightTs: Ts, Data: Data()}
 		it.Update(Mapped)
-		Mapped.Data.Lock()
 	} else {
 		Mapped = it.Mapped().(Mapped_t)
 	}
+	Mapped.Data.Lock()
 	return
 }
 
@@ -168,7 +172,6 @@ func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Da
 	}
 	stat.Duration += Diff
 	it.Update(Mapped)
-	Mapped.Data.Lock()
 	return
 }
 
