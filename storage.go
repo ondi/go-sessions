@@ -152,7 +152,6 @@ func (self * Storage_t) push_front(Ts int64, Domain interface{}, UID interface{}
 	} else {
 		Mapped = it.Mapped().(Mapped_t)
 	}
-	Mapped.Data.Lock()
 	return
 }
 
@@ -161,11 +160,13 @@ func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, ev
 	var it * cache.Value_t
 	self.Flush(Ts, self.count, evicted)
 	if it, Mapped, ok = self.push_front(Ts, Domain, UID, evicted); ok {
+		Mapped.Data.Lock()
 		return
 	}
 	if self.deferred && (Ts - Mapped.RightTs > self.ttl || Mapped.LeftTs - Ts > self.ttl) {
 		self.remove(it, evicted)
 		_, Mapped, _ = self.push_front(Ts, Domain, UID, evicted)
+		Mapped.Data.Lock()
 		return
 	}
 	Mapped.Hits++
@@ -183,6 +184,7 @@ func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, ev
 	}
 	stat.Duration += Diff
 	it.Update(Mapped)
+	Mapped.Data.Lock()
 	return
 }
 
