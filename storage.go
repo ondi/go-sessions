@@ -46,7 +46,7 @@ type StatRow_t struct {
 }
 
 type Storage_t struct {
-	cc * cache.Cache
+	cc * cache.Cache_t
 	stats map[interface{}]*Stat_t
 	ttl int64
 	count int
