@@ -13,9 +13,6 @@ type Key_t struct {
 
 type Data_t interface {
 	Lock()
-}
-
-type Domain_t interface {
 	NewDomain() interface{}
 	SetDomain(interface{})
 }
@@ -40,7 +37,7 @@ type Stat_t struct {
 	Data interface{}
 }
 
-type StatRow_t struct {
+type StatList_t struct {
 	Domain interface{}
 	Stat Stat_t
 }
@@ -135,18 +132,12 @@ func (self * Storage_t) push_front(Ts int64, Domain interface{}, UID interface{}
 	if it, ok = self.cc.PushFront(Key_t{Domain: Domain, UID: UID}, Mapped_t{}); ok {
 		Mapped = Mapped_t{Hits: 1, LeftTs: Ts, RightTs: Ts, Data: self.data()}
 		if stat, ok := self.stats[Domain]; !ok {
-			stat = &Stat_t{Hits: 1, Sessions: 1, Bounces: 1, Duration: 0}
-			if i, ok := Mapped.Data.(Domain_t); ok {
-				stat.Data = i.NewDomain()
-			}
-			self.stats[Domain] = stat
+			self.stats[Domain] = &Stat_t{Hits: 1, Sessions: 1, Bounces: 1, Duration: 0, Data: Mapped.Data.NewDomain()}
 		} else {
 			stat.Hits++
 			stat.Sessions++
 			stat.Bounces++
-			if i, ok := Mapped.Data.(Domain_t); ok {
-				i.SetDomain(stat.Data)
-			}
+			Mapped.Data.SetDomain(stat.Data)
 		}
 		it.Update(Mapped)
 	} else {
@@ -213,9 +204,9 @@ func (self * Storage_t) Stat(Domain interface{}) Stat_t {
 	return Stat_t{}
 }
 
-func (self * Storage_t) StatList() (res []StatRow_t) {
+func (self * Storage_t) StatList() (res []StatList_t) {
 	for k, v := range self.stats {
-		res = append(res, StatRow_t{k, *v})
+		res = append(res, StatList_t{k, *v})
 	}
 	return
 }

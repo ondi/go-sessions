@@ -58,7 +58,7 @@ func (self * Sessions_t) Stat(ShardKey uint64, Domain interface{}) (stat Stat_t)
 	return self.bucket[ShardKey % self.shards].Stat(Domain)
 }
 
-func (self * Sessions_t) StatBuckets() (res []StatRow_t) {
+func (self * Sessions_t) StatBuckets() (res []StatList_t) {
 	for _, b := range self.bucket {
 		res = append(res, b.StatList()...)
 	}
