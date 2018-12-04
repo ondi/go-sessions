@@ -13,8 +13,6 @@ type Key_t struct {
 
 type Data_t interface {
 	Lock()
-	NewDomainData() interface{}
-	SetDomainData(interface{})
 }
 
 type Mapped_t struct {
@@ -34,7 +32,6 @@ type Stat_t struct {
 	Sessions int64
 	Bounces int64
 	Duration int64
-	Data interface{}
 }
 
 type StatList_t struct {
@@ -132,12 +129,11 @@ func (self * Storage_t) push_front(Ts int64, Domain interface{}, UID interface{}
 	if it, ok = self.cc.PushFront(Key_t{Domain: Domain, UID: UID}, Mapped_t{}); ok {
 		Mapped = Mapped_t{Hits: 1, LeftTs: Ts, RightTs: Ts, Data: self.new_uid_data()}
 		if stat, ok := self.stats[Domain]; !ok {
-			self.stats[Domain] = &Stat_t{Hits: 1, Sessions: 1, Bounces: 1, Duration: 0, Data: Mapped.Data.NewDomainData()}
+			self.stats[Domain] = &Stat_t{Hits: 1, Sessions: 1, Bounces: 1, Duration: 0}
 		} else {
 			stat.Hits++
 			stat.Sessions++
 			stat.Bounces++
-			Mapped.Data.SetDomainData(stat.Data)
 		}
 		it.Update(Mapped)
 	} else {
