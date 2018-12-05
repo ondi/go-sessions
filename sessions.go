@@ -9,11 +9,11 @@ type Sessions_t struct {
 	bucket []*Session_t
 }
 
-func NewSessions(shards uint64, ttl int64, count int, deferred bool, data func () Data_t) (self * Sessions_t) {
+func NewSessions(shards uint64, ttl int64, count int, deferred bool, stats Stats, new_uid_data func () Data_t) (self * Sessions_t) {
 	self = &Sessions_t{}
 	self.shards = shards
 	for i := uint64(0); i < shards; i++ {
-		self.bucket = append(self.bucket, NewSession(ttl, count, deferred, data))
+		self.bucket = append(self.bucket, NewSession(ttl, count, deferred, stats, new_uid_data))
 	}
 	return
 }

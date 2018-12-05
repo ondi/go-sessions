@@ -27,24 +27,12 @@ type Value_t struct {
 	Mapped_t
 }
 
-type Stat_t struct {
-	Hits int64
-	Sessions int64
-	Bounces int64
-	Duration int64
-}
-
-type StatList_t struct {
-	Domain interface{}
-	Stat Stat_t
-}
-
 type Storage_t struct {
 	cc * cache.Cache_t
-	stats map[interface{}]*Stat_t
 	ttl int64
 	count int
 	deferred bool
+	stats Stats
 	new_uid_data func () Data_t
 }
 
@@ -65,10 +53,9 @@ func (Drop_t) Evict(Value_t) bool {
 	return true
 }
 
-func NewStorage(ttl int64, count int, deferred bool, new_uid_data func () Data_t) (self * Storage_t) {
+func NewStorage(ttl int64, count int, deferred bool, stats Stats, new_uid_data func () Data_t) (self * Storage_t) {
 	self = &Storage_t{}
 	self.cc = cache.New()
-	self.stats = map[interface{}]*Stat_t{}
 	if ttl <= 0 {
 		ttl = 1 << 63 - 1
 	}
@@ -78,13 +65,14 @@ func NewStorage(ttl int64, count int, deferred bool, new_uid_data func () Data_t
 	self.ttl = ttl
 	self.count = count
 	self.deferred = deferred
+	self.stats = stats
 	self.new_uid_data = new_uid_data
 	return
 }
 
 func (self * Storage_t) Clear() {
 	self.cc = cache.New()
-	self.stats = map[interface{}]*Stat_t{}
+	self.stats = NewStats()
 }
 
 func (self * Storage_t) Remove(Domain interface{}, UID interface{}, evicted Evict) bool {
@@ -101,17 +89,7 @@ func (self * Storage_t) Flush(Ts int64, keep int, evicted Evict) {
 
 func (self * Storage_t) remove(it * cache.Value_t, evicted Evict) {
 	value := Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Mapped().(Mapped_t)}
-	stat := self.stats[value.Domain]
-	if stat.Sessions > 1 {
-		stat.Sessions--
-		if value.Hits == 1 {
-			stat.Bounces--
-		}
-		stat.Hits -= value.Hits
-		stat.Duration -= value.RightTs - value.LeftTs
-	} else {
-		delete(self.stats, value.Domain)
-	}
+	self.stats.Remove(value.Domain, value.Hits, value.RightTs - value.LeftTs)
 	self.cc.Remove(value.Key_t)
 	evicted.Evict(value)
 }
@@ -128,13 +106,7 @@ func (self * Storage_t) evict(it * cache.Value_t, Ts int64, keep int, evicted Ev
 func (self * Storage_t) push_front(Ts int64, Domain interface{}, UID interface{}, evicted Evict) (it * cache.Value_t, Mapped Mapped_t, ok bool) {
 	if it, ok = self.cc.PushFront(Key_t{Domain: Domain, UID: UID}, Mapped_t{}); ok {
 		Mapped = Mapped_t{Hits: 1, LeftTs: Ts, RightTs: Ts, Data: self.new_uid_data()}
-		if stat, ok := self.stats[Domain]; !ok {
-			self.stats[Domain] = &Stat_t{Hits: 1, Sessions: 1, Bounces: 1, Duration: 0}
-		} else {
-			stat.Hits++
-			stat.Sessions++
-			stat.Bounces++
-		}
+		self.stats.Add(Domain)
 		it.Update(Mapped)
 	} else {
 		Mapped = it.Mapped().(Mapped_t)
@@ -164,12 +136,7 @@ func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, ev
 		Diff = Mapped.LeftTs - Ts
 		Mapped.LeftTs = Ts
 	}
-	stat := self.stats[Domain]
-	stat.Hits++
-	if Mapped.Hits == 2 {
-		stat.Bounces--
-	}
-	stat.Duration += Diff
+	self.stats.Update(Domain, Mapped.Hits, Diff)
 	it.Update(Mapped)
 	Mapped.Data.Lock()
 	return
@@ -194,17 +161,11 @@ func (self * Storage_t) ListBack(evicted Evict) bool {
 }
 
 func (self * Storage_t) Stat(Domain interface{}) Stat_t {
-	if res, ok := self.stats[Domain]; ok {
-		return *res
-	}
-	return Stat_t{}
+	return self.stats.Stat(Domain)
 }
 
 func (self * Storage_t) StatList() (res []StatList_t) {
-	for k, v := range self.stats {
-		res = append(res, StatList_t{k, *v})
-	}
-	return
+	return self.stats.StatList()
 }
 
 func (self * Storage_t) Size() int {
@@ -212,5 +173,5 @@ func (self * Storage_t) Size() int {
 }
 
 func (self * Storage_t) StatSize() int {
-	return len(self.stats)
+	return self.stats.Size()
 }
