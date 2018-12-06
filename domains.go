@@ -8,10 +8,13 @@ type Domains interface {
 	Add(Domain interface{})
 	Remove(Domain interface{}, Hits int64, Duration int64)
 	Update(Domain interface{}, Hits int64, Duration int64)
+	Size() int
 	Clear()
+}
+
+type Stats interface {
 	Stat(Domain interface{}) Stat_t
 	StatList() (res []StatList_t)
-	Size() int
 }
 
 type Stat_t struct {
@@ -32,10 +35,6 @@ type Domains_t struct {
 
 func NewDomains() (* Domains_t) {
 	return &Domains_t{stats: map[interface{}]*Stat_t{}}
-}
-
-func (self * Domains_t) Clear() {
-	self.stats = map[interface{}]*Stat_t{}
 }
 
 func (self * Domains_t) Add(Domain interface{}) {
@@ -73,6 +72,14 @@ func (self * Domains_t) Update(Domain interface{}, Hits int64, Duration int64) {
 	}
 }
 
+func (self * Domains_t) Size() int {
+	return len(self.stats)
+}
+
+func (self * Domains_t) Clear() {
+	self.stats = map[interface{}]*Stat_t{}
+}
+
 func (self * Domains_t) Stat(Domain interface{}) Stat_t {
 	if res, ok := self.stats[Domain]; ok {
 		return *res
@@ -87,10 +94,6 @@ func (self * Domains_t) StatList() (res []StatList_t) {
 	return
 }
 
-func (self * Domains_t) Size() int {
-	return len(self.stats)
-}
-
 type NoDomains_t struct {}
 
 func NewNoDomains() (* NoDomains_t) {
@@ -100,7 +103,5 @@ func NewNoDomains() (* NoDomains_t) {
 func (* NoDomains_t) Add(Domain interface{}) {}
 func (* NoDomains_t) Remove(Domain interface{}, Hits int64, Duration int64) {}
 func (* NoDomains_t) Update(Domain interface{}, Hits int64, Duration int64) {}
-func (* NoDomains_t) Clear() {}
-func (* NoDomains_t) Stat(Domain interface{}) (res Stat_t) {return}
-func (* NoDomains_t) StatList() (res []StatList_t) {return}
 func (* NoDomains_t) Size() int {return 0}
+func (* NoDomains_t) Clear() {}

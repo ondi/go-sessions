@@ -160,18 +160,24 @@ func (self * Storage_t) ListBack(evicted Evict) bool {
 	return true
 }
 
-func (self * Storage_t) Stat(Domain interface{}) Stat_t {
-	return self.domains.Stat(Domain)
-}
-
-func (self * Storage_t) StatList() (res []StatList_t) {
-	return self.domains.StatList()
-}
-
 func (self * Storage_t) Size() int {
 	return self.cc.Size()
 }
 
-func (self * Storage_t) StatSize() int {
+func (self * Storage_t) DomainsSize() int {
 	return self.domains.Size()
+}
+
+func (self * Storage_t) Stat(Domain interface{}) Stat_t {
+	if test, ok := self.domains.(Stats); ok {
+		return test.Stat(Domain)
+	}
+	return Stat_t{}
+}
+
+func (self * Storage_t) StatList() []StatList_t {
+	if test, ok := self.domains.(Stats); ok {
+		return test.StatList()
+	}
+	return nil
 }
