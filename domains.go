@@ -49,8 +49,9 @@ func (self * Domains_t) Add(Domain interface{}) {
 }
 
 func (self * Domains_t) Remove(Domain interface{}, Hits int64, Diff int64) {
-	stat := self.stats[Domain]
-	if stat.Sessions > 1 {
+	if stat, ok := self.stats[Domain]; !ok {
+		return
+	} else if stat.Sessions > 1 {
 		stat.Sessions--
 		if Hits == 1 {
 			stat.Bounces--
@@ -63,12 +64,13 @@ func (self * Domains_t) Remove(Domain interface{}, Hits int64, Diff int64) {
 }
 
 func (self * Domains_t) Update(Domain interface{}, Hits int64, Diff int64) {
-	stat := self.stats[Domain]
-	stat.Hits++
-	if Hits == 2 {
-		stat.Bounces--
+	if stat, ok := self.stats[Domain]; ok {
+		stat.Hits++
+		if Hits == 2 {
+			stat.Bounces--
+		}
+		stat.Duration += Diff
 	}
-	stat.Duration += Diff
 }
 
 func (self * Domains_t) Stat(Domain interface{}) Stat_t {
