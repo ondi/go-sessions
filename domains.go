@@ -6,8 +6,8 @@ package sessions
 
 type Domains interface {
 	Add(Domain interface{})
-	Remove(Domain interface{}, Hits int64, Diff int64)
-	Update(Domain interface{}, Hits int64, Diff int64)
+	Remove(Domain interface{}, Hits int64, Duration int64)
+	Update(Domain interface{}, Hits int64, Duration int64)
 	Clear()
 	Stat(Domain interface{}) Stat_t
 	StatList() (res []StatList_t)
@@ -48,7 +48,7 @@ func (self * Domains_t) Add(Domain interface{}) {
 	}
 }
 
-func (self * Domains_t) Remove(Domain interface{}, Hits int64, Diff int64) {
+func (self * Domains_t) Remove(Domain interface{}, Hits int64, Duration int64) {
 	if stat, ok := self.stats[Domain]; !ok {
 		return
 	} else if stat.Sessions > 1 {
@@ -57,19 +57,19 @@ func (self * Domains_t) Remove(Domain interface{}, Hits int64, Diff int64) {
 			stat.Bounces--
 		}
 		stat.Hits -= Hits
-		stat.Duration -= Diff
+		stat.Duration -= Duration
 	} else {
 		delete(self.stats, Domain)
 	}
 }
 
-func (self * Domains_t) Update(Domain interface{}, Hits int64, Diff int64) {
+func (self * Domains_t) Update(Domain interface{}, Hits int64, Duration int64) {
 	if stat, ok := self.stats[Domain]; ok {
 		stat.Hits++
 		if Hits == 2 {
 			stat.Bounces--
 		}
-		stat.Duration += Diff
+		stat.Duration += Duration
 	}
 }
 
@@ -98,8 +98,8 @@ func NewNoDomains() (* NoDomains_t) {
 }
 
 func (* NoDomains_t) Add(Domain interface{}) {}
-func (* NoDomains_t) Remove(Domain interface{}, Hits int64, Diff int64) {}
-func (* NoDomains_t) Update(Domain interface{}, Hits int64, Diff int64) {}
+func (* NoDomains_t) Remove(Domain interface{}, Hits int64, Duration int64) {}
+func (* NoDomains_t) Update(Domain interface{}, Hits int64, Duration int64) {}
 func (* NoDomains_t) Clear() {}
 func (* NoDomains_t) Stat(Domain interface{}) (res Stat_t) {return}
 func (* NoDomains_t) StatList() (res []StatList_t) {return}
