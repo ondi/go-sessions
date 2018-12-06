@@ -106,7 +106,7 @@ func (self * Storage_t) evict(it * cache.Value_t, Ts int64, keep int, evicted Ev
 func (self * Storage_t) push_front(Ts int64, Domain interface{}, UID interface{}, evicted Evict) (it * cache.Value_t, Mapped Mapped_t, ok bool) {
 	if it, ok = self.cc.PushFront(Key_t{Domain: Domain, UID: UID}, Mapped_t{}); ok {
 		Mapped = Mapped_t{Hits: 1, LeftTs: Ts, RightTs: Ts, Data: self.new_uid_data()}
-		self.domains.Add(Domain)
+		self.domains.Add(Domain, Mapped.Data)
 		it.Update(Mapped)
 	} else {
 		Mapped = it.Mapped().(Mapped_t)
@@ -168,16 +168,7 @@ func (self * Storage_t) DomainsSize() int {
 	return self.domains.Size()
 }
 
-func (self * Storage_t) Stat(Domain interface{}) Stat_t {
-	if test, ok := self.domains.(Stats); ok {
-		return test.Stat(Domain)
-	}
-	return Stat_t{}
-}
-
-func (self * Storage_t) StatList() []StatList_t {
-	if test, ok := self.domains.(Stats); ok {
-		return test.StatList()
-	}
-	return nil
+func (self * Storage_t) Stats() (stats Stats, ok bool) {
+	stats, ok = self.domains.(Stats)
+	return
 }

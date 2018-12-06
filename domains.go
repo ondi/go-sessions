@@ -5,7 +5,7 @@
 package sessions
 
 type Domains interface {
-	Add(Domain interface{})
+	Add(Domain interface{}, Data Data_t)
 	Remove(Domain interface{}, Hits int64, Duration int64)
 	Update(Domain interface{}, Hits int64, Duration int64)
 	Size() int
@@ -37,7 +37,7 @@ func NewDomains() (* Domains_t) {
 	return &Domains_t{stats: map[interface{}]*Stat_t{}}
 }
 
-func (self * Domains_t) Add(Domain interface{}) {
+func (self * Domains_t) Add(Domain interface{}, Data Data_t) {
 	if stat, ok := self.stats[Domain]; !ok {
 		self.stats[Domain] = &Stat_t{Hits: 1, Sessions: 1, Bounces: 1, Duration: 0}
 	} else {
@@ -100,7 +100,7 @@ func NewNoDomains() (* NoDomains_t) {
 	return &NoDomains_t{}
 }
 
-func (* NoDomains_t) Add(Domain interface{}) {}
+func (* NoDomains_t) Add(Domain interface{}, Data Data_t) {}
 func (* NoDomains_t) Remove(Domain interface{}, Hits int64, Duration int64) {}
 func (* NoDomains_t) Update(Domain interface{}, Hits int64, Duration int64) {}
 func (* NoDomains_t) Size() int {return 0}
