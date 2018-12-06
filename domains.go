@@ -4,10 +4,11 @@
 
 package sessions
 
-type Stats interface {
+type Domains interface {
 	Add(Domain interface{})
 	Remove(Domain interface{}, Hits int64, Diff int64)
 	Update(Domain interface{}, Hits int64, Diff int64)
+	Clear()
 	Stat(Domain interface{}) Stat_t
 	StatList() (res []StatList_t)
 	Size() int
@@ -25,15 +26,19 @@ type StatList_t struct {
 	Stat Stat_t
 }
 
-type Stats_t struct {
+type Domains_t struct {
 	stats map[interface{}]*Stat_t
 }
 
-func NewStats() (* Stats_t) {
-	return &Stats_t{stats: map[interface{}]*Stat_t{}}
+func NewDomains() (* Domains_t) {
+	return &Domains_t{stats: map[interface{}]*Stat_t{}}
 }
 
-func (self * Stats_t) Add(Domain interface{}) {
+func (self * Domains_t) Clear() {
+	self.stats = map[interface{}]*Stat_t{}
+}
+
+func (self * Domains_t) Add(Domain interface{}) {
 	if stat, ok := self.stats[Domain]; !ok {
 		self.stats[Domain] = &Stat_t{Hits: 1, Sessions: 1, Bounces: 1, Duration: 0}
 	} else {
@@ -43,7 +48,7 @@ func (self * Stats_t) Add(Domain interface{}) {
 	}
 }
 
-func (self * Stats_t) Remove(Domain interface{}, Hits int64, Diff int64) {
+func (self * Domains_t) Remove(Domain interface{}, Hits int64, Diff int64) {
 	stat := self.stats[Domain]
 	if stat.Sessions > 1 {
 		stat.Sessions--
@@ -57,7 +62,7 @@ func (self * Stats_t) Remove(Domain interface{}, Hits int64, Diff int64) {
 	}
 }
 
-func (self * Stats_t) Update(Domain interface{}, Hits int64, Diff int64) {
+func (self * Domains_t) Update(Domain interface{}, Hits int64, Diff int64) {
 	stat := self.stats[Domain]
 	stat.Hits++
 	if Hits == 2 {
@@ -66,33 +71,34 @@ func (self * Stats_t) Update(Domain interface{}, Hits int64, Diff int64) {
 	stat.Duration += Diff
 }
 
-func (self * Stats_t) Stat(Domain interface{}) Stat_t {
+func (self * Domains_t) Stat(Domain interface{}) Stat_t {
 	if res, ok := self.stats[Domain]; ok {
 		return *res
 	}
 	return Stat_t{}
 }
 
-func (self * Stats_t) StatList() (res []StatList_t) {
+func (self * Domains_t) StatList() (res []StatList_t) {
 	for k, v := range self.stats {
 		res = append(res, StatList_t{k, *v})
 	}
 	return
 }
 
-func (self * Stats_t) Size() int {
+func (self * Domains_t) Size() int {
 	return len(self.stats)
 }
 
-type NoStats_t struct {}
+type NoDomains_t struct {}
 
-func NewNoStats() (* NoStats_t) {
-	return &NoStats_t{}
+func NewNoDomains() (* NoDomains_t) {
+	return &NoDomains_t{}
 }
 
-func (* NoStats_t) Add(Domain interface{}) {}
-func (* NoStats_t) Remove(Domain interface{}, Hits int64, Diff int64) {}
-func (* NoStats_t) Update(Domain interface{}, Hits int64, Diff int64) {}
-func (* NoStats_t) Stat(Domain interface{}) (res Stat_t) {return}
-func (* NoStats_t) StatList() (res []StatList_t) {return}
-func (* NoStats_t) Size() int {return 0}
+func (* NoDomains_t) Add(Domain interface{}) {}
+func (* NoDomains_t) Remove(Domain interface{}, Hits int64, Diff int64) {}
+func (* NoDomains_t) Update(Domain interface{}, Hits int64, Diff int64) {}
+func (* NoDomains_t) Clear() {}
+func (* NoDomains_t) Stat(Domain interface{}) (res Stat_t) {return}
+func (* NoDomains_t) StatList() (res []StatList_t) {return}
+func (* NoDomains_t) Size() int {return 0}
