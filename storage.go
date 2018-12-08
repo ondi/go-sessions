@@ -106,7 +106,7 @@ func (self * Storage_t) evict(it * cache.Value_t, Ts int64, keep int, evicted Ev
 func (self * Storage_t) push_front(Ts int64, Domain interface{}, UID interface{}, evicted Evict) (it * cache.Value_t, Mapped Mapped_t, ok bool) {
 	if it, ok = self.cc.PushFront(Key_t{Domain: Domain, UID: UID}, Mapped_t{}); ok {
 		Mapped = Mapped_t{Hits: 1, LeftTs: Ts, RightTs: Ts, Data: self.new_uid_data()}
-		self.domains.Add(Domain, Mapped.Data)
+		self.domains.NewUID(Domain, Mapped.Data)
 		it.Update(Mapped)
 	} else {
 		Mapped = it.Mapped().(Mapped_t)
