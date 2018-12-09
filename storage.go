@@ -56,6 +56,14 @@ func (Drop_t) Evict(Value_t) bool {
 	return true
 }
 
+type NoNewData_t struct {}
+
+func (NoNewData_t) Lock() {}
+
+func (NoNewData_t) NewData() Data_t {
+	return NoNewData_t{}
+}
+
 func NewStorage(ttl int64, count int, deferred bool, domains Domains) (self * Storage_t) {
 	self = &Storage_t{}
 	self.cc = cache.New()
