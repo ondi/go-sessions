@@ -37,6 +37,7 @@ type Storage_t struct {
 	count int
 	deferred bool
 	domains Domains
+	new_data NewData_t
 }
 
 type Evict interface {
@@ -64,7 +65,7 @@ func (NoNewData_t) NewData() Data_t {
 	return NoNewData_t{}
 }
 
-func NewStorage(ttl int64, count int, deferred bool, domains Domains) (self * Storage_t) {
+func NewStorage(ttl int64, count int, deferred bool, domains Domains, new_data NewData_t) (self * Storage_t) {
 	self = &Storage_t{}
 	self.cc = cache.New()
 	if ttl <= 0 {
@@ -77,6 +78,7 @@ func NewStorage(ttl int64, count int, deferred bool, domains Domains) (self * St
 	self.count = count
 	self.deferred = deferred
 	self.domains = domains
+	self.new_data = new_data
 	return
 }
 
@@ -113,9 +115,9 @@ func (self * Storage_t) evict(it * cache.Value_t, Ts int64, keep int, evicted Ev
 	return false
 }
 
-func (self * Storage_t) push_front(Ts int64, Domain interface{}, UID interface{}, NewData NewData_t, evicted Evict) (it * cache.Value_t, Mapped Mapped_t, ok bool) {
+func (self * Storage_t) push_front(Ts int64, Domain interface{}, UID interface{}, evicted Evict) (it * cache.Value_t, Mapped Mapped_t, ok bool) {
 	if it, ok = self.cc.PushFront(Key_t{Domain: Domain, UID: UID}, Mapped_t{}); ok {
-		Mapped = Mapped_t{Hits: 1, LeftTs: Ts, RightTs: Ts, Data: NewData.NewData()}
+		Mapped = Mapped_t{Hits: 1, LeftTs: Ts, RightTs: Ts, Data: self.new_data.NewData()}
 		self.domains.NewUID(Domain, Mapped.Data)
 		it.Update(Mapped)
 	} else {
@@ -124,17 +126,17 @@ func (self * Storage_t) push_front(Ts int64, Domain interface{}, UID interface{}
 	return
 }
 
-func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, NewData NewData_t, evicted Evict) (Diff int64, Mapped Mapped_t) {
+func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, evicted Evict) (Diff int64, Mapped Mapped_t) {
 	var ok bool
 	var it * cache.Value_t
 	self.Flush(Ts, self.count, evicted)
-	if it, Mapped, ok = self.push_front(Ts, Domain, UID, NewData, evicted); ok {
+	if it, Mapped, ok = self.push_front(Ts, Domain, UID, evicted); ok {
 		Mapped.Data.Lock()
 		return
 	}
 	if self.deferred && (Ts - Mapped.RightTs > self.ttl || Mapped.LeftTs - Ts > self.ttl) {
 		self.remove(it, evicted)
-		_, Mapped, _ = self.push_front(Ts, Domain, UID, NewData, evicted)
+		_, Mapped, _ = self.push_front(Ts, Domain, UID, evicted)
 		Mapped.Data.Lock()
 		return
 	}

@@ -92,12 +92,8 @@ func (self * Domains_t) StatList() (res map[interface{}]Stat_t) {
 
 type NoDomains_t struct {}
 
-func NewNoDomains() (* NoDomains_t) {
-	return &NoDomains_t{}
-}
-
-func (* NoDomains_t) NewUID(Domain interface{}, Data Data_t) {}
-func (* NoDomains_t) Update(Domain interface{}, Hits int64, Duration int64) {}
-func (* NoDomains_t) Remove(Domain interface{}, Hits int64, Duration int64) {}
-func (* NoDomains_t) Size() int {return 0}
-func (* NoDomains_t) Clear() {}
+func (NoDomains_t) NewUID(Domain interface{}, Data Data_t) {}
+func (NoDomains_t) Update(Domain interface{}, Hits int64, Duration int64) {}
+func (NoDomains_t) Remove(Domain interface{}, Hits int64, Duration int64) {}
+func (NoDomains_t) Size() int {return 0}
+func (NoDomains_t) Clear() {}
