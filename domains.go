@@ -14,7 +14,7 @@ type Domains interface {
 
 type Stats interface {
 	Stat(Domain interface{}) Stat_t
-	StatList() (res []StatList_t)
+	StatList() (res map[interface{}]Stat_t)
 }
 
 type Stat_t struct {
@@ -22,11 +22,6 @@ type Stat_t struct {
 	Sessions int64
 	Bounces int64
 	Duration int64
-}
-
-type StatList_t struct {
-	Domain interface{}
-	Stat Stat_t
 }
 
 type Domains_t struct {
@@ -87,9 +82,10 @@ func (self * Domains_t) Stat(Domain interface{}) Stat_t {
 	return Stat_t{}
 }
 
-func (self * Domains_t) StatList() (res []StatList_t) {
+func (self * Domains_t) StatList() (res map[interface{}]Stat_t) {
+	res = map[interface{}]Stat_t{}
 	for k, v := range self.stats {
-		res = append(res, StatList_t{k, *v})
+		res[k] = *v
 	}
 	return
 }

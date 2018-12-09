@@ -62,7 +62,7 @@ func (self * Session_t) Stat(Domain interface{}) Stat_t {
 	return Stat_t{}
 }
 
-func (self * Session_t) StatList() []StatList_t {
+func (self * Session_t) StatList() map[interface{}]Stat_t {
 	self.mx.Lock()
 	defer self.mx.Unlock()
 	if s, ok := self.storage.Stats(); ok {
