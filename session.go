@@ -71,8 +71,14 @@ func (self * Session_t) StatList() []StatList_t {
 	return nil
 }
 
-func (self * Session_t) Size() (int, int) {
+func (self * Session_t) Size() (int) {
 	self.mx.Lock()
 	defer self.mx.Unlock()
-	return self.storage.DomainsSize(), self.storage.Size()
+	return self.storage.Size()
+}
+
+func (self * Session_t) DomainSize() (int) {
+	self.mx.Lock()
+	defer self.mx.Unlock()
+	return self.storage.DomainsSize()
 }

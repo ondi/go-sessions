@@ -65,19 +65,30 @@ func (self * Sessions_t) StatBuckets() (res []StatList_t) {
 	return
 }
 
-func (self * Sessions_t) Size() (x int, y int) {
+func (self * Sessions_t) Size() (res int) {
 	for _, b := range self.bucket {
-		_x, _y := b.Size()
-		x += _x
-		y += _y
+		res += b.Size()
 	}
 	return
 }
 
-func (self * Sessions_t) SizeBuckets() (res [][]int) {
+func (self * Sessions_t) DomainSize() (res int) {
 	for _, b := range self.bucket {
-		x, y := b.Size()
-		res = append(res, []int{x, y})
+		res += b.DomainSize()
+	}
+	return
+}
+
+func (self * Sessions_t) SizeBuckets() (res []int) {
+	for _, b := range self.bucket {
+		res = append(res, b.Size())
+	}
+	return
+}
+
+func (self * Sessions_t) DomainSizeBuckets() (res []int) {
+	for _, b := range self.bucket {
+		res = append(res, b.DomainSize())
 	}
 	return
 }
