@@ -50,7 +50,9 @@ func (self * Session_t) ListBack(evicted Evict) bool {
 func (self * Session_t) Update(Ts int64, Domain interface{}, UID interface{}, evicted Evict) (Diff int64, Mapped Mapped_t) {
 	self.mx.Lock()
 	defer self.mx.Unlock()
-	return self.storage.Update(Ts, Domain, UID, evicted)
+	Diff, Mapped = self.storage.Update(Ts, Domain, UID, evicted)
+	Mapped.Data.Lock()
+	return
 }
 
 func (self * Session_t) Stat(Domain interface{}) Stat_t {
