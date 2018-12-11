@@ -101,7 +101,7 @@ func (self * Storage_t) Flush(Ts int64, keep int, evicted Evict) {
 
 func (self * Storage_t) remove(it * cache.Value_t, evicted Evict) {
 	value := Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Mapped().(Mapped_t)}
-	self.domains.Remove(value.Domain, value.Hits, value.RightTs - value.LeftTs)
+	self.domains.RemoveSession(value.Domain, value.Hits, value.RightTs - value.LeftTs)
 	self.cc.Remove(value.Key_t)
 	evicted.Evict(value)
 }
@@ -118,7 +118,7 @@ func (self * Storage_t) evict(it * cache.Value_t, Ts int64, keep int, evicted Ev
 func (self * Storage_t) push_front(Ts int64, Domain interface{}, UID interface{}, evicted Evict) (it * cache.Value_t, Mapped Mapped_t, ok bool) {
 	if it, ok = self.cc.PushFront(Key_t{Domain: Domain, UID: UID}, Mapped_t{}); ok {
 		Mapped = Mapped_t{Hits: 1, LeftTs: Ts, RightTs: Ts, Data: self.new_data.NewData()}
-		self.domains.NewUID(Domain, Mapped.Data)
+		self.domains.AddSession(Domain, Mapped.Data)
 		it.Update(Mapped)
 	} else {
 		Mapped = it.Mapped().(Mapped_t)
@@ -146,7 +146,7 @@ func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, ev
 		Diff = Mapped.LeftTs - Ts
 		Mapped.LeftTs = Ts
 	}
-	self.domains.Update(Domain, Mapped.Hits, Diff)
+	self.domains.UpdateSession(Domain, Mapped.Hits, Diff)
 	it.Update(Mapped)
 	return
 }
