@@ -55,6 +55,12 @@ func (self * Session_t) Update(Ts int64, Domain interface{}, UID interface{}, ev
 	return
 }
 
+func (self * Session_t) Size() (int) {
+	self.mx.Lock()
+	defer self.mx.Unlock()
+	return self.storage.Size()
+}
+
 func (self * Session_t) Stat(Domain interface{}) Stat_t {
 	self.mx.Lock()
 	defer self.mx.Unlock()
@@ -73,14 +79,11 @@ func (self * Session_t) StatList() map[interface{}]Stat_t {
 	return nil
 }
 
-func (self * Session_t) Size() (int) {
-	self.mx.Lock()
-	defer self.mx.Unlock()
-	return self.storage.Size()
-}
-
 func (self * Session_t) DomainSize() (int) {
 	self.mx.Lock()
 	defer self.mx.Unlock()
-	return self.storage.DomainsSize()
+	if s, ok := self.storage.Stats(); ok {
+		return s.Size()
+	}
+	return 0
 }

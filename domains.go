@@ -8,11 +8,11 @@ type Domains interface {
 	AddSession(Domain interface{}, Data Data_t)
 	RemoveSession(Domain interface{}, Hits int64, Duration int64)
 	UpdateSession(Domain interface{}, Hits int64, Duration int64)
-	Size() int
 	Clear()
 }
 
 type Stats interface {
+	Size() int
 	Stat(Domain interface{}) Stat_t
 	StatList() (res map[interface{}]Stat_t)
 }
@@ -67,12 +67,12 @@ func (self * Domains_t) UpdateSession(Domain interface{}, Hits int64, Duration i
 	}
 }
 
-func (self * Domains_t) Size() int {
-	return len(self.stats)
-}
-
 func (self * Domains_t) Clear() {
 	self.stats = map[interface{}]*Stat_t{}
+}
+
+func (self * Domains_t) Size() int {
+	return len(self.stats)
 }
 
 func (self * Domains_t) Stat(Domain interface{}) Stat_t {

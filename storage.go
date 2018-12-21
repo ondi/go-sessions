@@ -173,10 +173,6 @@ func (self * Storage_t) Size() int {
 	return self.cc.Size()
 }
 
-func (self * Storage_t) DomainsSize() int {
-	return self.domains.Size()
-}
-
 func (self * Storage_t) Stats() (stats Stats, ok bool) {
 	stats, ok = self.domains.(Stats)
 	return
