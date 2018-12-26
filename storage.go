@@ -61,8 +61,8 @@ type NoNewData_t struct {}
 
 func (NoNewData_t) Lock() {}
 
-func (NoNewData_t) NewData() Data_t {
-	return NoNewData_t{}
+func (self NoNewData_t) NewData() Data_t {
+	return self
 }
 
 func NewStorage(ttl int64, count int, deferred bool, domains Domains, new_data NewData_t) (self * Storage_t) {
@@ -77,8 +77,16 @@ func NewStorage(ttl int64, count int, deferred bool, domains Domains, new_data N
 	self.ttl = ttl
 	self.count = count
 	self.deferred = deferred
-	self.domains = domains
-	self.new_data = new_data
+	if domains == nil {
+		self.domains = NoDomains_t{}
+	} else {
+		self.domains = domains
+	}
+	if new_data == nil {
+		self.new_data = NoNewData_t{}
+	} else {
+		self.new_data = new_data
+	}
 	return
 }
 
