@@ -91,7 +91,7 @@ func NewStorage(ttl int64, count int, deferred bool, domains Domains, new_data N
 }
 
 func (self * Storage_t) Clear() {
-	self.cc = cache.New()
+	self.cc.Clear()
 	self.domains.Clear()
 }
 
