@@ -6,12 +6,12 @@ package sessions
 
 import "github.com/ondi/go-cache"
 
-type Data_t interface {
+type Data interface {
 	Lock()
 }
 
-type NewData_t interface {
-	NewData() Data_t
+type NewData interface {
+	NewData() Data
 }
 
 type Key_t struct {
@@ -23,7 +23,7 @@ type Mapped_t struct {
 	Hits int64
 	LeftTs int64
 	RightTs int64
-	Data Data_t
+	Data Data
 }
 
 type Value_t struct {
@@ -37,7 +37,7 @@ type Storage_t struct {
 	count int
 	deferred bool
 	domains Domains
-	new_data NewData_t
+	new_data NewData
 }
 
 type Evict interface {
@@ -61,11 +61,11 @@ type NoNewData_t struct {}
 
 func (NoNewData_t) Lock() {}
 
-func (self NoNewData_t) NewData() Data_t {
+func (self NoNewData_t) NewData() Data {
 	return self
 }
 
-func NewStorage(ttl int64, count int, deferred bool, domains Domains, new_data NewData_t) (self * Storage_t) {
+func NewStorage(ttl int64, count int, deferred bool, domains Domains, new_data NewData) (self * Storage_t) {
 	self = &Storage_t{}
 	self.cc = cache.New()
 	if ttl <= 0 {
