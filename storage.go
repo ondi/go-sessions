@@ -6,12 +6,8 @@ package sessions
 
 import "github.com/ondi/go-cache"
 
-type Data interface {
-	Lock()
-}
-
 type NewData interface {
-	NewData() Data
+	NewData() interface{}
 }
 
 type Key_t struct {
@@ -23,7 +19,7 @@ type Mapped_t struct {
 	Hits int64
 	LeftTs int64
 	RightTs int64
-	Data Data
+	Data interface{}
 }
 
 type Value_t struct {
@@ -59,9 +55,7 @@ func (Drop_t) Evict(Value_t) bool {
 
 type NoNewData_t struct {}
 
-func (NoNewData_t) Lock() {}
-
-func (self NoNewData_t) NewData() Data {
+func (self NoNewData_t) NewData() interface{} {
 	return self
 }
 

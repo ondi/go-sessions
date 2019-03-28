@@ -51,7 +51,6 @@ func (self * Session_t) Update(Ts int64, Domain interface{}, UID interface{}, ev
 	self.mx.Lock()
 	defer self.mx.Unlock()
 	Diff, Mapped = self.storage.Update(Ts, Domain, UID, evicted)
-	Mapped.Data.Lock()
 	return
 }
 
