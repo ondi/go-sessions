@@ -102,7 +102,7 @@ func (self * Storage_t) Flush(Ts int64, keep int, evicted Evict) {
 }
 
 func (self * Storage_t) remove(it * cache.Value_t, evicted Evict) {
-	value := Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Value.(Mapped_t)}
+	value := Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Value().(Mapped_t)}
 	self.domains.RemoveSession(value.Domain, value.Hits, value.RightTs - value.LeftTs)
 	self.cc.Remove(value.Key_t)
 	evicted.Evict(value)
@@ -110,7 +110,7 @@ func (self * Storage_t) remove(it * cache.Value_t, evicted Evict) {
 
 func (self * Storage_t) evict(it * cache.Value_t, Ts int64, keep int, evicted Evict) bool {
 	if self.cc.Size() > keep ||
-		self.deferred == false && (Ts - it.Value.(Mapped_t).RightTs > self.ttl || it.Value.(Mapped_t).LeftTs - Ts > self.ttl) {
+		self.deferred == false && (Ts - it.Value().(Mapped_t).RightTs > self.ttl || it.Value().(Mapped_t).LeftTs - Ts > self.ttl) {
 		self.remove(it, evicted)
 		return true
 	}
@@ -121,9 +121,9 @@ func (self * Storage_t) push_front(Ts int64, Domain interface{}, UID interface{}
 	if it, ok = self.cc.PushFront(Key_t{Domain: Domain, UID: UID}, Mapped_t{}); ok {
 		Mapped = Mapped_t{Hits: 1, LeftTs: Ts, RightTs: Ts, Data: self.new_data.NewData()}
 		self.domains.AddSession(Domain, Mapped.Data)
-		it.Value = Mapped
+		it.Update(Mapped)
 	} else {
-		Mapped = it.Value.(Mapped_t)
+		Mapped = it.Value().(Mapped_t)
 	}
 	return
 }
@@ -148,14 +148,14 @@ func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, ev
 		Diff = Mapped.LeftTs - Ts
 		Mapped.LeftTs = Ts
 	}
-	it.Value = Mapped
+	it.Update(Mapped)
 	self.domains.UpdateSession(Domain, Mapped.Hits, Diff)
 	return
 }
 
 func (self * Storage_t) ListFront(evicted Evict) bool {
 	for it := self.cc.Front(); it != self.cc.End(); it = it.Next() {
-		if evicted.Evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Value.(Mapped_t)}) == false {
+		if evicted.Evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Value().(Mapped_t)}) == false {
 			return false
 		}
 	}
@@ -164,7 +164,7 @@ func (self * Storage_t) ListFront(evicted Evict) bool {
 
 func (self * Storage_t) ListBack(evicted Evict) bool {
 	for it := self.cc.Back(); it != self.cc.End(); it = it.Prev() {
-		if evicted.Evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Value.(Mapped_t)}) == false {
+		if evicted.Evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Value().(Mapped_t)}) == false {
 			return false
 		}
 	}
