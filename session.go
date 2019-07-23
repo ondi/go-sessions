@@ -11,9 +11,9 @@ type Session_t struct {
 	storage * Storage_t
 }
 
-func NewSession(ttl int64, count int, deferred bool, domains Domains, new_data NewData) (self * Session_t) {
+func NewSession(ttl int64, limit int, domains Domains, new_data NewData) (self * Session_t) {
 	self = &Session_t{}
-	self.storage = NewStorage(ttl, count, deferred, domains, new_data)
+	self.storage = NewStorage(ttl, limit, domains, new_data)
 	return
 }
 
