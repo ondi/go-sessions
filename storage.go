@@ -6,10 +6,6 @@ package sessions
 
 import "github.com/ondi/go-cache"
 
-type NewData interface {
-	NewData() interface{}
-}
-
 type Key_t struct {
 	Domain interface{}
 	UID interface{}
@@ -32,7 +28,6 @@ type Storage_t struct {
 	ttl int64
 	limit int
 	domains Domains
-	new_data NewData
 }
 
 type Evict interface {
@@ -52,13 +47,7 @@ func (Drop_t) Evict(Value_t) bool {
 	return true
 }
 
-type NoNewData_t struct {}
-
-func (self NoNewData_t) NewData() interface{} {
-	return self
-}
-
-func NewStorage(ttl int64, limit int, domains Domains, new_data NewData) (self * Storage_t) {
+func NewStorage(ttl int64, limit int, domains Domains) (self * Storage_t) {
 	self = &Storage_t{}
 	self.c = cache.New()
 	if ttl <= 0 {
@@ -73,11 +62,6 @@ func NewStorage(ttl int64, limit int, domains Domains, new_data NewData) (self *
 		self.domains = NoDomains_t{}
 	} else {
 		self.domains = domains
-	}
-	if new_data == nil {
-		self.new_data = NoNewData_t{}
-	} else {
-		self.new_data = new_data
 	}
 	return
 }
@@ -114,9 +98,9 @@ func (self * Storage_t) evict(it * cache.Value_t, Ts int64, keep int, evicted Ev
 	return false
 }
 
-func (self * Storage_t) push_front(Ts int64, Domain interface{}, UID interface{}) (it * cache.Value_t, Mapped Mapped_t, ok bool) {
+func (self * Storage_t) push_front(Ts int64, Domain interface{}, UID interface{}, NewData func() interface{}) (it * cache.Value_t, Mapped Mapped_t, ok bool) {
 	if it, ok = self.c.PushFront(Key_t{Domain: Domain, UID: UID}, nil); ok {
-		Mapped = Mapped_t{Hits: 1, LeftTs: Ts, RightTs: Ts, Data: self.new_data.NewData()}
+		Mapped = Mapped_t{Hits: 1, LeftTs: Ts, RightTs: Ts, Data: NewData()}
 		self.domains.AddSession(Domain, Mapped.Data)
 		it.Update(Mapped)
 	} else {
@@ -125,16 +109,16 @@ func (self * Storage_t) push_front(Ts int64, Domain interface{}, UID interface{}
 	return
 }
 
-func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, evicted Evict) (Diff int64, Mapped Mapped_t) {
+func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, NewData func() interface{}, evicted Evict) (Diff int64, Mapped Mapped_t) {
 	var ok bool
 	var it * cache.Value_t
-	if it, Mapped, ok = self.push_front(Ts, Domain, UID); ok {
+	if it, Mapped, ok = self.push_front(Ts, Domain, UID, NewData); ok {
 		self.Flush(Ts, self.limit, evicted)
 		return
 	}
 	if Ts - Mapped.RightTs > self.ttl || Mapped.LeftTs - Ts > self.ttl {
 		self.remove(it, evicted)
-		_, Mapped, _ = self.push_front(Ts, Domain, UID)
+		_, Mapped, _ = self.push_front(Ts, Domain, UID, NewData)
 		return
 	}
 	Mapped.Hits++

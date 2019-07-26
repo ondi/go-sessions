@@ -9,11 +9,11 @@ type Sessions_t struct {
 	bucket []*Session_t
 }
 
-func NewSessions(shards uint64, ttl int64, limit int, domains Domains, new_data NewData) (self * Sessions_t) {
+func NewSessions(shards uint64, ttl int64, limit int, domains Domains) (self * Sessions_t) {
 	self = &Sessions_t{}
 	self.shards = shards
 	for i := uint64(0); i < shards; i++ {
-		self.bucket = append(self.bucket, NewSession(ttl, limit, domains, new_data))
+		self.bucket = append(self.bucket, NewSession(ttl, limit, domains))
 	}
 	return
 }
@@ -24,9 +24,9 @@ func (self * Sessions_t) Clear() {
 	}
 }
 
-func (self * Sessions_t) Flush(LastTs int64, keep int, evicted Evict) {
+func (self * Sessions_t) Flush(Ts int64, keep int, evicted Evict) {
 	for _, b := range self.bucket {
-		b.Flush(LastTs, keep, evicted)
+		b.Flush(Ts, keep, evicted)
 	}
 }
 
@@ -34,8 +34,8 @@ func (self * Sessions_t) Remove(ShardKey uint64, Domain interface{}, UID interfa
 	return self.bucket[ShardKey % self.shards].Remove(Domain, UID, evicted)
 }
 
-func (self * Sessions_t) Update(ShardKey uint64, Ts int64, Domain interface{}, UID interface{}, evicted Evict) (Diff int64, Mapped Mapped_t) {
-	return self.bucket[ShardKey % self.shards].Update(Ts, Domain, UID, evicted)
+func (self * Sessions_t) Update(ShardKey uint64, Ts int64, Domain interface{}, UID interface{}, NewData func() interface{}, evicted Evict) (Diff int64, Mapped Mapped_t) {
+	return self.bucket[ShardKey % self.shards].Update(Ts, Domain, UID, NewData, evicted)
 }
 
 func (self * Sessions_t) ListFront(evicted Evict) {

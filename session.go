@@ -11,9 +11,9 @@ type Session_t struct {
 	storage * Storage_t
 }
 
-func NewSession(ttl int64, limit int, domains Domains, new_data NewData) (self * Session_t) {
+func NewSession(ttl int64, limit int, domains Domains) (self * Session_t) {
 	self = &Session_t{}
-	self.storage = NewStorage(ttl, limit, domains, new_data)
+	self.storage = NewStorage(ttl, limit, domains)
 	return
 }
 
@@ -23,10 +23,10 @@ func (self * Session_t) Clear() {
 	self.storage.Clear()
 }
 
-func (self * Session_t) Flush(LastTs int64, keep int, evicted Evict) {
+func (self * Session_t) Flush(Ts int64, keep int, evicted Evict) {
 	self.mx.Lock()
 	defer self.mx.Unlock()
-	self.storage.Flush(LastTs, keep, evicted)
+	self.storage.Flush(Ts, keep, evicted)
 }
 
 func (self * Session_t) Remove(Domain interface{}, UID interface{}, evicted Evict) bool {
@@ -47,10 +47,10 @@ func (self * Session_t) ListBack(evicted Evict) bool {
 	return self.storage.ListBack(evicted)
 }
 
-func (self * Session_t) Update(Ts int64, Domain interface{}, UID interface{}, evicted Evict) (Diff int64, Mapped Mapped_t) {
+func (self * Session_t) Update(Ts int64, Domain interface{}, UID interface{}, NewData func() interface{}, evicted Evict) (Diff int64, Mapped Mapped_t) {
 	self.mx.Lock()
 	defer self.mx.Unlock()
-	Diff, Mapped = self.storage.Update(Ts, Domain, UID, evicted)
+	Diff, Mapped = self.storage.Update(Ts, Domain, UID, NewData, evicted)
 	return
 }
 
