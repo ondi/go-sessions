@@ -115,7 +115,7 @@ func (self * Storage_t) evict(it * cache.Value_t, Ts int64, keep int, evicted Ev
 }
 
 func (self * Storage_t) push_front(Ts int64, Domain interface{}, UID interface{}) (it * cache.Value_t, Mapped Mapped_t, ok bool) {
-	if it, ok = self.c.PushFront(Key_t{Domain: Domain, UID: UID}, Mapped_t{}); ok {
+	if it, ok = self.c.PushFront(Key_t{Domain: Domain, UID: UID}, nil); ok {
 		Mapped = Mapped_t{Hits: 1, LeftTs: Ts, RightTs: Ts, Data: self.new_data.NewData()}
 		self.domains.AddSession(Domain, Mapped.Data)
 		it.Update(Mapped)
@@ -128,8 +128,8 @@ func (self * Storage_t) push_front(Ts int64, Domain interface{}, UID interface{}
 func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, evicted Evict) (Diff int64, Mapped Mapped_t) {
 	var ok bool
 	var it * cache.Value_t
-	self.Flush(Ts, self.limit, evicted)
 	if it, Mapped, ok = self.push_front(Ts, Domain, UID); ok {
+		self.Flush(Ts, self.limit, evicted)
 		return
 	}
 	if Ts - Mapped.RightTs > self.ttl || Mapped.LeftTs - Ts > self.ttl {
