@@ -28,26 +28,27 @@ type Storage_t struct {
 	ttl int64
 	limit int
 	domains Domains
+	evict Evict
 }
 
 type Evict interface {
-	Evict(Value_t) bool
+	PushBackNoWait(interface{}) bool
 }
 
 type Evict_t []Value_t
 
-func (self * Evict_t) Evict(value Value_t) bool {
-	*self = append(*self, value)
+func (self * Evict_t) PushBackNoWait(value interface{}) bool {
+	*self = append(*self, value.(Value_t))
 	return true
 }
 
 type Drop_t struct {}
 
-func (Drop_t) Evict(Value_t) bool {
+func (Drop_t) PushBackNoWait(interface{}) bool {
 	return true
 }
 
-func NewStorage(ttl int64, limit int, domains Domains) (self * Storage_t) {
+func NewStorage(ttl int64, limit int, domains Domains, evict Evict) (self * Storage_t) {
 	self = &Storage_t{}
 	self.c = cache.New()
 	if ttl <= 0 {
@@ -63,6 +64,7 @@ func NewStorage(ttl int64, limit int, domains Domains) (self * Storage_t) {
 	} else {
 		self.domains = domains
 	}
+	self.evict = evict
 	return
 }
 
@@ -71,28 +73,16 @@ func (self * Storage_t) Clear() {
 	self.domains.Clear()
 }
 
-func (self * Storage_t) Remove(Domain interface{}, UID interface{}, evicted Evict) bool {
-	if it := self.c.Find(Key_t{Domain: Domain, UID: UID}); it != self.c.End() {
-		self.remove(it, evicted)
-		return true
-	}
-	return false
-}
-
-func (self * Storage_t) Flush(Ts int64, keep int, evicted Evict) {
-	for it := self.c.Back(); it != self.c.End() && self.evict(it, Ts, keep, evicted); it = it.Prev() {}
-}
-
-func (self * Storage_t) remove(it * cache.Value_t, evicted Evict) {
+func (self * Storage_t) remove(it * cache.Value_t) {
 	value := Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Value().(Mapped_t)}
 	self.domains.RemoveSession(value.Domain, value.Hits, value.RightTs - value.LeftTs)
 	self.c.Remove(value.Key_t)
-	evicted.Evict(value)
+	self.evict.PushBackNoWait(value)
 }
 
-func (self * Storage_t) evict(it * cache.Value_t, Ts int64, keep int, evicted Evict) bool {
+func (self * Storage_t) flush(it * cache.Value_t, Ts int64, keep int) bool {
 	if self.c.Size() > keep || Ts - it.Value().(Mapped_t).RightTs > self.ttl || it.Value().(Mapped_t).LeftTs - Ts > self.ttl {
-		self.remove(it, evicted)
+		self.remove(it)
 		return true
 	}
 	return false
@@ -109,15 +99,27 @@ func (self * Storage_t) push_front(Ts int64, Domain interface{}, UID interface{}
 	return
 }
 
-func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, NewData func() interface{}, evicted Evict) (Diff int64, Mapped Mapped_t) {
+func (self * Storage_t) Remove(Domain interface{}, UID interface{}) bool {
+	if it := self.c.Find(Key_t{Domain: Domain, UID: UID}); it != self.c.End() {
+		self.remove(it)
+		return true
+	}
+	return false
+}
+
+func (self * Storage_t) Flush(Ts int64, keep int) {
+	for it := self.c.Back(); it != self.c.End() && self.flush(it, Ts, keep); it = it.Prev() {}
+}
+
+func (self * Storage_t) Push(Ts int64, Domain interface{}, UID interface{}, NewData func() interface{}) (Diff int64, Mapped Mapped_t) {
 	var ok bool
 	var it * cache.Value_t
 	if it, Mapped, ok = self.push_front(Ts, Domain, UID, NewData); ok {
-		self.Flush(Ts, self.limit, evicted)
+		self.Flush(Ts, self.limit)
 		return
 	}
 	if Ts - Mapped.RightTs > self.ttl || Mapped.LeftTs - Ts > self.ttl {
-		self.remove(it, evicted)
+		self.remove(it)
 		_, Mapped, _ = self.push_front(Ts, Domain, UID, NewData)
 		return
 	}
@@ -134,18 +136,18 @@ func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Ne
 	return
 }
 
-func (self * Storage_t) ListFront(evicted Evict) bool {
+func (self * Storage_t) ListFront(list Evict) bool {
 	for it := self.c.Front(); it != self.c.End(); it = it.Next() {
-		if evicted.Evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Value().(Mapped_t)}) == false {
+		if list.PushBackNoWait(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Value().(Mapped_t)}) == false {
 			return false
 		}
 	}
 	return true
 }
 
-func (self * Storage_t) ListBack(evicted Evict) bool {
+func (self * Storage_t) ListBack(list Evict) bool {
 	for it := self.c.Back(); it != self.c.End(); it = it.Prev() {
-		if evicted.Evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Value().(Mapped_t)}) == false {
+		if list.PushBackNoWait(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Value().(Mapped_t)}) == false {
 			return false
 		}
 	}
