@@ -111,7 +111,7 @@ func (self * Storage_t) Flush(Ts int64, keep int) {
 	for it := self.c.Back(); it != self.c.End() && self.flush(it, Ts, keep); it = it.Prev() {}
 }
 
-func (self * Storage_t) Push(Ts int64, Domain interface{}, UID interface{}, NewData func() interface{}) (Diff int64, Mapped Mapped_t) {
+func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, NewData func() interface{}) (Diff int64, Mapped Mapped_t) {
 	var ok bool
 	var it * cache.Value_t
 	if it, Mapped, ok = self.push_front(Ts, Domain, UID, NewData); ok {

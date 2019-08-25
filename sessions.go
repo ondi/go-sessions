@@ -34,8 +34,8 @@ func (self * Sessions_t) Remove(ShardKey uint64, Domain interface{}, UID interfa
 	return self.bucket[ShardKey % self.shards].Remove(Domain, UID)
 }
 
-func (self * Sessions_t) Push(ShardKey uint64, Ts int64, Domain interface{}, UID interface{}, NewData func() interface{}) (Diff int64, Mapped Mapped_t) {
-	return self.bucket[ShardKey % self.shards].Push(Ts, Domain, UID, NewData)
+func (self * Sessions_t) Update(ShardKey uint64, Ts int64, Domain interface{}, UID interface{}, NewData func() interface{}) (Diff int64, Mapped Mapped_t) {
+	return self.bucket[ShardKey % self.shards].Update(Ts, Domain, UID, NewData)
 }
 
 func (self * Sessions_t) ListFront(list Evict) {

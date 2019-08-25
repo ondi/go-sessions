@@ -47,10 +47,10 @@ func (self * Session_t) ListBack(list Evict) bool {
 	return self.storage.ListBack(list)
 }
 
-func (self * Session_t) Push(Ts int64, Domain interface{}, UID interface{}, NewData func() interface{}) (Diff int64, Mapped Mapped_t) {
+func (self * Session_t) Update(Ts int64, Domain interface{}, UID interface{}, NewData func() interface{}) (Diff int64, Mapped Mapped_t) {
 	self.mx.Lock()
 	defer self.mx.Unlock()
-	Diff, Mapped = self.storage.Push(Ts, Domain, UID, NewData)
+	Diff, Mapped = self.storage.Update(Ts, Domain, UID, NewData)
 	return
 }
 
