@@ -31,22 +31,16 @@ type Storage_t struct {
 	evict Evict
 }
 
-type Evict interface {
-	PushBackNoWait(interface{}) bool
-}
+type Evict func(interface{}) bool
 
 type Evict_t []Value_t
 
-func (self * Evict_t) PushBackNoWait(value interface{}) bool {
+func (self * Evict_t) Evict(value interface{}) bool {
 	*self = append(*self, value.(Value_t))
 	return true
 }
 
-type Drop_t struct {}
-
-func (Drop_t) PushBackNoWait(interface{}) bool {
-	return true
-}
+func Drop(interface{}) bool {return true}
 
 func NewStorage(ttl int64, limit int, domains Domains, evict Evict) (self * Storage_t) {
 	self = &Storage_t{}
@@ -77,7 +71,7 @@ func (self * Storage_t) remove(it * cache.Value_t) {
 	value := Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Value().(Mapped_t)}
 	self.domains.RemoveSession(value.Domain, value.Hits, value.RightTs - value.LeftTs)
 	self.c.Remove(value.Key_t)
-	self.evict.PushBackNoWait(value)
+	self.evict(value)
 }
 
 func (self * Storage_t) flush(it * cache.Value_t, Ts int64, keep int) bool {
@@ -133,18 +127,18 @@ func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Ne
 	return
 }
 
-func (self * Storage_t) ListFront(list Evict) bool {
+func (self * Storage_t) ListFront(evict Evict) bool {
 	for it := self.c.Front(); it != self.c.End(); it = it.Next() {
-		if list.PushBackNoWait(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Value().(Mapped_t)}) == false {
+		if evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Value().(Mapped_t)}) == false {
 			return false
 		}
 	}
 	return true
 }
 
-func (self * Storage_t) ListBack(list Evict) bool {
+func (self * Storage_t) ListBack(evict Evict) bool {
 	for it := self.c.Back(); it != self.c.End(); it = it.Prev() {
-		if list.PushBackNoWait(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Value().(Mapped_t)}) == false {
+		if evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Value().(Mapped_t)}) == false {
 			return false
 		}
 	}

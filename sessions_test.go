@@ -3,8 +3,7 @@ package sessions
 import "testing"
 
 func ExampleSort1() {
-	var evicted Drop_t
-	cc := NewSessions(1, 15, 10, NewDomains(), &evicted)
+	cc := NewSessions(1, 15, 10, NewDomains(), Drop)
 	cc.Update(1, 1, 1, 1, func() interface{}{return nil})
 	
 /* Output:
@@ -12,8 +11,7 @@ func ExampleSort1() {
 }
 
 func ExampleSort2() {
-	var evicted Drop_t
-	cc := NewSessions(1, 15, 10, nil, &evicted)
+	cc := NewSessions(1, 15, 10, nil, Drop)
 	cc.Update(1, 1, 1, 1, func() interface{}{return nil})
 	
 /* Output:
