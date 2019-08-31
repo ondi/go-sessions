@@ -33,13 +33,6 @@ type Storage_t struct {
 
 type Evict func(interface{}) bool
 
-type Evict_t []Value_t
-
-func (self * Evict_t) Evict(value interface{}) bool {
-	*self = append(*self, value.(Value_t))
-	return true
-}
-
 func Drop(interface{}) bool {return true}
 
 func NewStorage(ttl int64, limit int, domains Domains, evict Evict) (self * Storage_t) {
