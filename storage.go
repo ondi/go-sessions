@@ -83,12 +83,12 @@ func (self * Storage_t) push_front(Ts int64, Domain interface{}, UID interface{}
 	return
 }
 
-func (self * Storage_t) Remove(Domain interface{}, UID interface{}) bool {
-	if it := self.c.Find(Key_t{Domain: Domain, UID: UID}); it != self.c.End() {
+func (self * Storage_t) Remove(Domain interface{}, UID interface{}) (ok bool) {
+	var it * cache.Value_t
+	if it, ok = self.c.Find(Key_t{Domain: Domain, UID: UID}); ok {
 		self.remove(it)
-		return true
 	}
-	return false
+	return
 }
 
 func (self * Storage_t) Flush(Ts int64, keep int) {
