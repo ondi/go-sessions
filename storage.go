@@ -31,9 +31,9 @@ type Storage_t struct {
 	evict Evict
 }
 
-type Evict func(interface{}) bool
+type Evict func(interface{}) int
 
-func Drop(interface{}) bool {return true}
+func Drop(interface{}) int {return 0}
 
 func NewStorage(ttl int64, limit int, domains Domains, evict Evict) (self * Storage_t) {
 	self = &Storage_t{}
@@ -122,7 +122,7 @@ func (self * Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, Ne
 
 func (self * Storage_t) ListFront(evict Evict) bool {
 	for it := self.c.Front(); it != self.c.End(); it = it.Next() {
-		if evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Value().(Mapped_t)}) == false {
+		if evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Value().(Mapped_t)}) != 0 {
 			return false
 		}
 	}
@@ -131,7 +131,7 @@ func (self * Storage_t) ListFront(evict Evict) bool {
 
 func (self * Storage_t) ListBack(evict Evict) bool {
 	for it := self.c.Back(); it != self.c.End(); it = it.Prev() {
-		if evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Value().(Mapped_t)}) == false {
+		if evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Value().(Mapped_t)}) != 0 {
 			return false
 		}
 	}
