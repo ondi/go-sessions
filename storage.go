@@ -76,15 +76,12 @@ func (self *Storage_t) flush(it *cache.Value_t, Ts int64, keep int) bool {
 }
 
 func (self *Storage_t) push_front(Ts int64, Domain interface{}, UID interface{}, NewData func() interface{}) (it *cache.Value_t, Mapped Mapped_t, ok bool) {
-	it, _ = self.c.WriteFront(
+	it, ok = self.c.PushFront(
 		Key_t{Domain: Domain, UID: UID},
 		func() interface{} {
 			mapped := Mapped_t{Hits: 1, LeftTs: Ts, RightTs: Ts, Data: NewData()}
 			self.domains.AddSession(Domain, mapped.Data)
 			return mapped
-		},
-		func(prev interface{}) interface{} {
-			return prev
 		},
 	)
 	Mapped = it.Value().(Mapped_t)
