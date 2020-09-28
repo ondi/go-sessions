@@ -61,14 +61,14 @@ func (self *Storage_t) Clear() {
 }
 
 func (self *Storage_t) remove(it *cache.Value_t) {
-	value := Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Value().(Mapped_t)}
+	value := Value_t{Key_t: it.Key.(Key_t), Mapped_t: it.Value.(Mapped_t)}
 	self.domains.RemoveSession(value.Domain, value.Hits, value.RightTs-value.LeftTs)
 	self.c.Remove(value.Key_t)
 	self.evict(value)
 }
 
 func (self *Storage_t) flush(it *cache.Value_t, Ts int64, keep int) bool {
-	if self.c.Size() > keep || Ts-it.Value().(Mapped_t).RightTs > self.ttl || it.Value().(Mapped_t).LeftTs-Ts > self.ttl {
+	if self.c.Size() > keep || Ts-it.Value.(Mapped_t).RightTs > self.ttl || it.Value.(Mapped_t).LeftTs-Ts > self.ttl {
 		self.remove(it)
 		return true
 	}
@@ -84,7 +84,7 @@ func (self *Storage_t) push_front(Ts int64, Domain interface{}, UID interface{},
 			return mapped
 		},
 	)
-	Mapped = it.Value().(Mapped_t)
+	Mapped = it.Value.(Mapped_t)
 	return
 }
 
@@ -121,14 +121,14 @@ func (self *Storage_t) Update(Ts int64, Domain interface{}, UID interface{}, New
 		Diff = Mapped.LeftTs - Ts
 		Mapped.LeftTs = Ts
 	}
-	it.Update(Mapped)
+	it.Value = Mapped
 	self.domains.UpdateSession(Domain, Mapped.Hits, Diff)
 	return
 }
 
 func (self *Storage_t) ListFront(evict Evict) bool {
 	for it := self.c.Front(); it != self.c.End(); it = it.Next() {
-		if evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Value().(Mapped_t)}) != 0 {
+		if evict(Value_t{Key_t: it.Key.(Key_t), Mapped_t: it.Value.(Mapped_t)}) != 0 {
 			return false
 		}
 	}
@@ -137,7 +137,7 @@ func (self *Storage_t) ListFront(evict Evict) bool {
 
 func (self *Storage_t) ListBack(evict Evict) bool {
 	for it := self.c.Back(); it != self.c.End(); it = it.Prev() {
-		if evict(Value_t{Key_t: it.Key().(Key_t), Mapped_t: it.Value().(Mapped_t)}) != 0 {
+		if evict(Value_t{Key_t: it.Key.(Key_t), Mapped_t: it.Value.(Mapped_t)}) != 0 {
 			return false
 		}
 	}
