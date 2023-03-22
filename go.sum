@@ -1,2 +1,2 @@
-github.com/ondi/go-cache v0.0.0-20211111075227-baee44a21c32 h1:kFSGqrJAeDhlw0pwwxa6fnIBNAveDsjHtlOuLLIKKRk=
-github.com/ondi/go-cache v0.0.0-20211111075227-baee44a21c32/go.mod h1:HulK+k5quc9p66O3LhEzMsgeXfJJRD+UCA6Oi35Kfzw=
+github.com/ondi/go-cache v0.0.0-20230322100319-5f3878d58ef3 h1:ZRoZLKa8Cwg5MZ/TnWFXtDOOaA+uBtR3uMwJ15qM2ag=
+github.com/ondi/go-cache v0.0.0-20230322100319-5f3878d58ef3/go.mod h1:x8J3FOjzA2bQL33EoyKfBfTcbBFZ8U2KZPbAQplNlw8=
