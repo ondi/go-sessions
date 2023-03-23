@@ -82,6 +82,7 @@ func (self *Storage_t) push_front(Ts int64, Domain interface{}, UID interface{},
 			*p = Mapped_t{Hits: 1, LeftTs: Ts, RightTs: Ts, Data: NewData()}
 			self.domains.AddSession(Domain, p.Data)
 		},
+		func(p *Mapped_t) {},
 	)
 	Mapped = it.Value
 	return
